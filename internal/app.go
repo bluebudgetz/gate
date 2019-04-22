@@ -27,7 +27,6 @@ type Config struct {
 		Password string
 		Host     string
 		Port     uint16
-		SqlPath  string
 	}
 }
 
@@ -90,12 +89,12 @@ func NewGate() Gate {
 			panic(errors.Wrap(err, "failed extracting database migration files"))
 		}
 		defer os.RemoveAll(tempMigrationsPath)
-		if err = assets.RestoreAssets(tempMigrationsPath, "../deployments/rdbms/migrations"); err != nil {
+		if err = assets.RestoreAssets(tempMigrationsPath, "deployments/rdbms/migrations"); err != nil {
 			panic(errors.Wrap(err, "failed extracting database migration files"))
 		}
 
 		// Migrate all the way down, and then all the way up
-		migrator, err := migrate.NewWithDatabaseInstance("file://"+tempMigrationsPath, "mysql", driver)
+		migrator, err := migrate.NewWithDatabaseInstance("file://"+tempMigrationsPath+"/deployments/rdbms/migrations", "mysql", driver)
 		if err != nil {
 			panic(errors.Wrap(err, "failed creating database migrator"))
 		}
