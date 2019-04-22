@@ -7,8 +7,10 @@ COPY ./internal ./internal/
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ./gate ./main.go
 
 FROM scratch
+WORKDIR /tmp
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /app/gate /
 EXPOSE 3000
+WORKDIR /
 ENTRYPOINT ["/gate"]
