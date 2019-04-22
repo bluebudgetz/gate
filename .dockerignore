@@ -1,0 +1,5 @@
+/.git
+/gate
+*.local.*
+.DS_Store
+Thumbs.db

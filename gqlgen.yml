@@ -1,0 +1,25 @@
+# Set of GraphQL schemas to parse
+schema:
+  - ./schema.graphql
+  - internal/model/*.graphql
+
+# Where to place GraphQL implementation (generated from schema)
+exec:
+  filename: internal/graphql/impl.go
+  package: graphql
+
+# Where to place generated Go models (if any)
+model:
+  filename: internal/model/generated.go
+  package: model
+
+# Set of pre-existing models to import
+models:
+  Account:
+    model: github.com/bluebudgetz/gate/internal/model.Account
+
+# Where to place generated resolvers
+resolver:
+  filename: internal/resolver.go
+  package: main
+  type: Resolver

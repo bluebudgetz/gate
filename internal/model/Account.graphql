@@ -1,0 +1,9 @@
+type Account {
+    id: Int!
+    createdOn: Time!
+    updatedOn: Time
+    deletedOn: Time
+    name: String!
+    parent: Account
+    childAccounts: [Account!]
+}
