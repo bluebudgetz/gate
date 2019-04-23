@@ -46,7 +46,7 @@ func NewGate() Gate {
 
 	// Setup Viper
 	v := config.CreateViper("gate")
-	v.SetDefault("http.port", 3000)
+	v.SetDefault("http.port", 3001)
 	v.SetDefault("db.username", "")
 	v.SetDefault("db.password", "")
 	v.SetDefault("db.host", "localhost")
