@@ -56,3 +56,13 @@ func (r *accountResolver) ChildAccounts(ctx context.Context, obj *model.Account)
 	}
 	return accounts, nil
 }
+
+func (r *resolver) Mutation() graphql.MutationResolver {
+	return &mutationResolver{r}
+}
+
+type mutationResolver struct{ *resolver }
+
+func (r *mutationResolver) CreateAccount(ctx context.Context, name string, parentID *int) (*model.Account, error) {
+	return model.GetAccountsDataManager(ctx).CreateAccount(ctx, name, parentID)
+}

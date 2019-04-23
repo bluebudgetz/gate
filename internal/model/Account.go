@@ -32,6 +32,7 @@ type AccountsDataManager interface {
 	LoadAllAccounts(ctx context.Context) ([]Account, error)
 	LoadRootAccounts(ctx context.Context) ([]Account, error)
 	LoadChildAccounts(ctx context.Context, parentId int) ([]Account, error)
+	CreateAccount(ctx context.Context, name string, parentId *int) (*Account, error)
 	PutInContext(ctx context.Context) context.Context
 }
 
@@ -103,4 +104,17 @@ func (m *accountsDataManager) LoadRootAccounts(ctx context.Context) ([]Account, 
 
 func (m *accountsDataManager) LoadChildAccounts(ctx context.Context, parentId int) ([]Account, error) {
 	return m.loadAccounts(ctx, "SELECT * FROM accounts WHERE deleted_on IS NULL AND parent_id = ?", parentId)
+}
+
+func (m *accountsDataManager) CreateAccount(ctx context.Context, name string, parentId *int) (*Account, error) {
+	result, err := m.db.ExecContext(ctx, "INSERT INTO bb.accounts (name, parent_id) VALUES (?, ?)", name, parentId)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed creating account")
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed fetching newly-created account's ID")
+	}
+	return m.LoadAccountByID(ctx, int(id))
 }

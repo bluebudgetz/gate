@@ -3,3 +3,7 @@ scalar Time
 type Query {
     accounts(limit: Int = 25, offset: Int = 0): [Account!]!
 }
+
+type Mutation {
+    createAccount(name: String!, parentId: Int): Account!
+}
