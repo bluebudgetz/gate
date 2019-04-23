@@ -241,6 +241,11 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var parsedSchema = gqlparser.MustLoadSchema(
 	&ast.Source{Name: "./schema.graphql", Input: `scalar Time
 
+schema {
+    query: Query
+    mutation: Mutation
+}
+
 type Query {
     accounts(limit: Int = 25, offset: Int = 0): [Account!]!
 }

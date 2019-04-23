@@ -1,5 +1,10 @@
 scalar Time
 
+schema {
+    query: Query
+    mutation: Mutation
+}
+
 type Query {
     accounts(limit: Int = 25, offset: Int = 0): [Account!]!
 }
