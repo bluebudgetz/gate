@@ -8,6 +8,7 @@ import (
 	"github.com/bluebudgetz/common/pkg/logging"
 	"github.com/bluebudgetz/gate/internal/assets"
 	"github.com/bluebudgetz/gate/internal/graphql"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -61,6 +62,9 @@ func NewGate() Gate {
 
 	// Setup logging
 	logging.ConfigureLogger(&conf.Log)
+
+	// Print config
+	logging.Log.Infof("Configuration: %s", spew.Sdump(conf))
 
 	// Setup database connection pool
 	dbUrl := fmt.Sprintf(
@@ -129,7 +133,7 @@ func (a *gate) Config() Config {
 
 func (a *gate) Run() error {
 	port := a.config.Http.Port
-	logging.Log.Infof("Starting gate on port %d", port)
+	logging.Log.Infof("Starting gate")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), a.router)
 }
 
