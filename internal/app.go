@@ -154,9 +154,13 @@ func createGraphQLHandler(db *sql.DB) http.HandlerFunc {
 	if err != nil {
 		panic(err)
 	}
+	complexity := 0
+	if config.GetEnvironment() == config.Prod {
+		complexity = 100
+	}
 	return handler.GraphQL(
 		graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}),
 		handler.IntrospectionEnabled(config.GetEnvironment() != config.Prod),
-		handler.ComplexityLimit(50),
+		handler.ComplexityLimit(complexity),
 	)
 }
