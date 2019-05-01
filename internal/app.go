@@ -119,6 +119,7 @@ func NewGate() Gate {
 	}
 
 	// Setup router
+	logging.Log.Info("Setting up router")
 	router := chi.NewRouter()
 	router.Use(NewPersistenceMiddleware(db))
 	router.Handle("/query", createGraphQLHandler(db))
