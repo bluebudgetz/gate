@@ -13,6 +13,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	"github.com/pkg/errors"
+	"github.com/rs/cors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -122,6 +123,14 @@ func NewGate() Gate {
 	logging.Log.Info("Setting up router")
 	router := chi.NewRouter()
 	router.Use(NewPersistenceMiddleware(db))
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:4200"}, // TODO: CORS allowed-origins should be configurable
+		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}).Handler)
 	router.Handle("/query", createGraphQLHandler(db))
 	router.Get("/playground", handler.Playground("Gate | Bluebudgetz", "/query"))
 

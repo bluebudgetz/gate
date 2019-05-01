@@ -9,6 +9,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.3.0
 	github.com/kr/pty v1.1.3 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/rs/cors v1.6.0
 	github.com/vektah/gqlparser v1.1.2
 )
 
