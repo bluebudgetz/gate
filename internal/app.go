@@ -73,21 +73,18 @@ func NewGate() Gate {
 		conf.Db.Host,
 		conf.Db.Port,
 	)
+	logging.Log.Info("Connecting to MariaDB")
 	db, err := sql.Open("mysql", dbUrl)
 	if err != nil {
 		panic(errors.Wrap(err, "failed creating connection pool"))
 	}
 
 	// Initialize database when in development mode
+	// TODO: create a "scripts/migrate.go" file for running migrations
 	if config.GetEnvironment() == config.Dev {
-		// TODO: create a "scripts/migrate.go" file for this
-
-		driver, err := mysql.WithInstance(db, &mysql.Config{})
-		if err != nil {
-			panic(errors.Wrap(err, "failed creating database migration driver"))
-		}
 
 		// Extract all migrations to a temporary directory
+		logging.Log.Info("Extracting migrations")
 		tempMigrationsPath, err := ioutil.TempDir("", "bluebudgetzMigrations")
 		if err != nil {
 			panic(errors.Wrap(err, "failed extracting database migration files"))
@@ -95,6 +92,12 @@ func NewGate() Gate {
 		defer os.RemoveAll(tempMigrationsPath)
 		if err = assets.RestoreAssets(tempMigrationsPath, "deployments/rdbms/migrations"); err != nil {
 			panic(errors.Wrap(err, "failed extracting database migration files"))
+		}
+
+		logging.Log.Info("Migrating schema")
+		driver, err := mysql.WithInstance(db, &mysql.Config{})
+		if err != nil {
+			panic(errors.Wrap(err, "failed creating database migration driver"))
 		}
 
 		// Migrate all the way down, and then all the way up
