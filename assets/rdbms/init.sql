@@ -3,7 +3,7 @@
  *
  * It IS ONLY invoked in development environment.
  */
-INSERT INTO accounts (id, created_on, updated_on, deleted_on, name, parent_id)
+INSERT INTO bb.accounts (id, created_on, updated_on, deleted_on, name, parent_id)
 VALUES (1, DATE_ADD(DATE(NOW()), INTERVAL FLOOR(RAND() * 24) HOUR), NULL, NULL, 'Bank1', NULL),
        (2, DATE_ADD(DATE(NOW()), INTERVAL FLOOR(RAND() * 24) HOUR), NULL, NULL, 'Bank2', NULL),
        (3, DATE_ADD(DATE(NOW()), INTERVAL FLOOR(RAND() * 24) HOUR), NULL, NULL, 'Loans', 1),
