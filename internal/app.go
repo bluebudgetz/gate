@@ -22,6 +22,10 @@ import (
 type Config struct {
 	Log  logging.LogConfig
 	Http struct {
+		Cors struct {
+			Host string
+			Port uint16
+		}
 		Port uint16
 	}
 	Db struct {
@@ -49,6 +53,8 @@ func NewGate() Gate {
 	// Setup Viper
 	v := config.CreateViper("gate")
 	v.SetDefault("http.port", 3001)
+	v.SetDefault("http.cors.host", "www.bluebudgetz.com")
+	v.SetDefault("http.cors.port", 80)
 	v.SetDefault("db.username", "")
 	v.SetDefault("db.password", "")
 	v.SetDefault("db.host", "localhost")
@@ -124,7 +130,7 @@ func NewGate() Gate {
 	router := chi.NewRouter()
 	router.Use(NewPersistenceMiddleware(db))
 	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:4200"}, // TODO: CORS allowed-origins should be configurable
+		AllowedOrigins:   []string{fmt.Sprintf("http://%s:%d", conf.Http.Cors.Host, conf.Http.Cors.Port)},
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
