@@ -20,6 +20,7 @@ CREATE TABLE transactions
     source_account_id INT UNSIGNED   NOT NULL,
     target_account_id INT UNSIGNED   NOT NULL,
     amount            FLOAT UNSIGNED NOT NULL,
+    comments          TEXT,
     CONSTRAINT FOREIGN KEY fk_transactions_source_account_id (source_account_id) REFERENCES accounts (id)
         ON UPDATE RESTRICT
         ON DELETE RESTRICT,
