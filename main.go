@@ -1,7 +1,7 @@
 package main
 
 //go:generate go-bindata -o ./internal/assets/bindata.go -ignore ".DS_Store" -pkg assets assets/... deployments/...
-//go:generate go run github.com/99designs/gqlgen
+//go:generate go run cmd/gqlgen/main.go
 
 import (
 	. "github.com/bluebudgetz/common/pkg/logging"
