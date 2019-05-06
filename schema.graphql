@@ -6,7 +6,9 @@ schema {
 }
 
 type Query {
-    accounts(limit: Int = 25, offset: Int = 0): [Account!]!
+    account(id: Int!): Account!
+    accounts: [Account!]!
+    transactions(from: Time!, until: Time!): [Transaction!]!
 }
 
 type Mutation {

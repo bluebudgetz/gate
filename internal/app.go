@@ -7,7 +7,9 @@ import (
 	"github.com/bluebudgetz/common/pkg/config"
 	"github.com/bluebudgetz/common/pkg/logging"
 	"github.com/bluebudgetz/gate/internal/assets"
-	"github.com/bluebudgetz/gate/internal/graphql"
+	"github.com/bluebudgetz/gate/internal/graphql/impl"
+	"github.com/bluebudgetz/gate/internal/graphql/resolver"
+	"github.com/bluebudgetz/gate/internal/middleware"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
 	"github.com/golang-migrate/migrate/v4"
@@ -128,7 +130,7 @@ func NewGate() Gate {
 	// Setup router
 	logging.Log.Info("Setting up router")
 	router := chi.NewRouter()
-	router.Use(NewPersistenceMiddleware(db))
+	router.Use(middleware.NewPersistenceMiddleware(db))
 	router.Use(cors.New(cors.Options{
 		AllowedOrigins:   []string{fmt.Sprintf("http://%s:%d", conf.Http.Cors.Host, conf.Http.Cors.Port)},
 		AllowedMethods:   []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
@@ -137,7 +139,7 @@ func NewGate() Gate {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}).Handler)
-	router.Handle("/query", createGraphQLHandler(db))
+	router.Handle("/query", createGraphQLHandler())
 	router.Get("/playground", handler.Playground("Gate | Bluebudgetz", "/query"))
 
 	return &gate{
@@ -168,17 +170,13 @@ func buildDbCredentials(conf *Config) string {
 	}
 }
 
-func createGraphQLHandler(db *sql.DB) http.HandlerFunc {
-	resolver, err := NewResolverRoot(db)
-	if err != nil {
-		panic(err)
-	}
+func createGraphQLHandler() http.HandlerFunc {
 	complexity := 0
 	if config.GetEnvironment() == config.Prod {
 		complexity = 100
 	}
 	return handler.GraphQL(
-		graphql.NewExecutableSchema(graphql.Config{Resolvers: resolver}),
+		impl.NewExecutableSchema(impl.Config{Resolvers: &resolver.Resolver{}}),
 		handler.IntrospectionEnabled(config.GetEnvironment() != config.Prod),
 		handler.ComplexityLimit(complexity),
 	)

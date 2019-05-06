@@ -5,8 +5,8 @@ schema:
 
 # Where to place GraphQL implementation (generated from schema)
 exec:
-  filename: internal/graphql/impl.go
-  package: graphql
+  filename: internal/graphql/impl/impl.go
+  package: impl
 
 # Where to place generated Go models (if any)
 model:
@@ -17,9 +17,11 @@ model:
 models:
   Account:
     model: github.com/bluebudgetz/gate/internal/model.Account
+  Transaction:
+    model: github.com/bluebudgetz/gate/internal/model.Transaction
 
-# Where to place generated resolvers
-resolver:
-  filename: internal/resolver.go
-  package: main
-  type: Resolver
+# Where to place generated stub resolvers (optional, disabled since we already have the resolvers)
+#resolver:
+#  filename: internal/graphql/resolver/resolver.go
+#  package: resolver
+#  type: Resolver

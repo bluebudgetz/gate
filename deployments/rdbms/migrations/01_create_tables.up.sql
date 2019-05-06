@@ -16,6 +16,8 @@ CREATE TABLE transactions
 (
     id                INT UNSIGNED   NOT NULL AUTO_INCREMENT PRIMARY KEY,
     created_on        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_on        TIMESTAMP      NULL ON UPDATE CURRENT_TIMESTAMP,
+    deleted_on        TIMESTAMP      NULL,
     origin            VARCHAR(255)   NOT NULL,
     source_account_id INT UNSIGNED   NOT NULL,
     target_account_id INT UNSIGNED   NOT NULL,
