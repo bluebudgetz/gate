@@ -1,7 +1,6 @@
 # Set of GraphQL schemas to parse
 schema:
   - ./schema.graphql
-  - internal/model/*.graphql
 
 # Where to place GraphQL implementation (generated from schema)
 exec:

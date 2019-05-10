@@ -5,6 +5,29 @@ schema {
     mutation: Mutation
 }
 
+type Account {
+    id: Int!
+    createdOn: Time!
+    updatedOn: Time
+    deletedOn: Time
+    name: String!
+    parent: Account
+    incoming: Float!
+    outgoing: Float!
+    childAccounts: [Account!]
+    leaf: Boolean!
+}
+
+type Transaction {
+    id: Int!
+    createdOn: Time!
+    origin: String!
+    source: Account!
+    target: Account!
+    amount: Float!
+    comments: String
+}
+
 type Query {
     account(id: Int!): Account!
     accounts: [Account!]!

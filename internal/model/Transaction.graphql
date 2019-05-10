@@ -1,9 +1,0 @@
-type Transaction {
-    id: Int!
-    createdOn: Time!
-    origin: String!
-    source: Account!
-    target: Account!
-    amount: Float!
-    comments: String
-}

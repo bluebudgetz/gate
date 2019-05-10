@@ -46,13 +46,14 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Account struct {
-		Balance       func(childComplexity int) int
 		ChildAccounts func(childComplexity int) int
 		CreatedOn     func(childComplexity int) int
 		DeletedOn     func(childComplexity int) int
 		ID            func(childComplexity int) int
+		Incoming      func(childComplexity int) int
 		Leaf          func(childComplexity int) int
 		Name          func(childComplexity int) int
+		Outgoing      func(childComplexity int) int
 		Parent        func(childComplexity int) int
 		UpdatedOn     func(childComplexity int) int
 	}
@@ -117,13 +118,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Account.Balance":
-		if e.complexity.Account.Balance == nil {
-			break
-		}
-
-		return e.complexity.Account.Balance(childComplexity), true
-
 	case "Account.ChildAccounts":
 		if e.complexity.Account.ChildAccounts == nil {
 			break
@@ -152,6 +146,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Account.ID(childComplexity), true
 
+	case "Account.Incoming":
+		if e.complexity.Account.Incoming == nil {
+			break
+		}
+
+		return e.complexity.Account.Incoming(childComplexity), true
+
 	case "Account.Leaf":
 		if e.complexity.Account.Leaf == nil {
 			break
@@ -165,6 +166,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Account.Name(childComplexity), true
+
+	case "Account.Outgoing":
+		if e.complexity.Account.Outgoing == nil {
+			break
+		}
+
+		return e.complexity.Account.Outgoing(childComplexity), true
 
 	case "Account.Parent":
 		if e.complexity.Account.Parent == nil {
@@ -392,6 +400,29 @@ schema {
     mutation: Mutation
 }
 
+type Account {
+    id: Int!
+    createdOn: Time!
+    updatedOn: Time
+    deletedOn: Time
+    name: String!
+    parent: Account
+    incoming: Float!
+    outgoing: Float!
+    childAccounts: [Account!]
+    leaf: Boolean!
+}
+
+type Transaction {
+    id: Int!
+    createdOn: Time!
+    origin: String!
+    source: Account!
+    target: Account!
+    amount: Float!
+    comments: String
+}
+
 type Query {
     account(id: Int!): Account!
     accounts: [Account!]!
@@ -403,28 +434,6 @@ type Query {
 type Mutation {
     createAccount(name: String!, parentId: Int): Account!
     createTransaction(origin: String!, sourceAccountId: Int!, targetAccountId: Int!, amount: Float!, comments: String): Transaction!
-}
-`},
-	&ast.Source{Name: "internal/model/Account.graphql", Input: `type Account {
-    id: Int!
-    createdOn: Time!
-    updatedOn: Time
-    deletedOn: Time
-    name: String!
-    parent: Account
-    balance: Float!
-    childAccounts: [Account!]
-    leaf: Boolean!
-}
-`},
-	&ast.Source{Name: "internal/model/Transaction.graphql", Input: `type Transaction {
-    id: Int!
-    createdOn: Time!
-    origin: String!
-    source: Account!
-    target: Account!
-    amount: Float!
-    comments: String
 }
 `},
 )
@@ -764,7 +773,7 @@ func (ec *executionContext) _Account_parent(ctx context.Context, field graphql.C
 	return ec.marshalOAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Account_balance(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
+func (ec *executionContext) _Account_incoming(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
 	rctx := &graphql.ResolverContext{
@@ -777,7 +786,34 @@ func (ec *executionContext) _Account_balance(ctx context.Context, field graphql.
 	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
 	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Balance, nil
+		return obj.Incoming, nil
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Account_outgoing(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Account",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Outgoing, nil
 	})
 	if resTmp == nil {
 		if !ec.HasError(rctx) {
@@ -2194,8 +2230,13 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Account_parent(ctx, field, obj)
 				return res
 			})
-		case "balance":
-			out.Values[i] = ec._Account_balance(ctx, field, obj)
+		case "incoming":
+			out.Values[i] = ec._Account_incoming(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalid = true
+			}
+		case "outgoing":
+			out.Values[i] = ec._Account_outgoing(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}

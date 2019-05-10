@@ -49,7 +49,7 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, origin string,
 	for accountId != nil {
 		result, err = tx.ExecContext(
 			ctx,
-			"UPDATE bb.accounts SET balance = balance + ? WHERE id = ?",
+			"UPDATE bb.accounts SET incoming = incoming + ? WHERE id = ?",
 			amount, *accountId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed adding %d to balance of account %d (tx %d)", amount, *accountId, id)
@@ -67,7 +67,7 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, origin string,
 	for accountId != nil {
 		result, err = tx.ExecContext(
 			ctx,
-			"UPDATE bb.accounts SET balance = balance - ? WHERE id = ?",
+			"UPDATE bb.accounts SET outgoing = outgoing + ? WHERE id = ?",
 			amount, *accountId)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed subtracting %d from balance of account %d (tx %d)", amount, accountId, id)
