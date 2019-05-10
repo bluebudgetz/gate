@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/cors"
 	"net/http"
+	"time"
 )
 
 type Config struct {
@@ -28,10 +29,13 @@ type Config struct {
 		Port uint16
 	}
 	Db struct {
-		Username string
-		Password string
-		Host     string
-		Port     uint16
+		Username    string
+		Password    string
+		Host        string
+		Port        uint16
+		MaxLifetime time.Duration
+		MaxIdle     int
+		MaxOpen     int
 	}
 }
 
@@ -59,6 +63,9 @@ func NewGate() Gate {
 	v.SetDefault("db.host", "localhost")
 	v.SetDefault("db.port", 3306)
 	v.SetDefault("db.sqlPath", "/db")
+	v.SetDefault("db.maxLifetime", 60 * time.Second)
+	v.SetDefault("db.maxIdle", int(5))
+	v.SetDefault("db.maxOpen", int(15))
 	err := v.Unmarshal(&conf)
 	if err != nil {
 		panic(errors.Wrap(err, "failed reading configuration"))
@@ -74,7 +81,7 @@ func NewGate() Gate {
 
 	// Setup database connection pool
 	dbUrl := fmt.Sprintf(
-		"%s@tcp(%s:%d)/bb?charset=utf8mb4&parseTime=True&loc=Local&multiStatements=true",
+		"%s@tcp(%s:%d)/bb?collation=utf8mb4_bin&loc=Local&maxAllowedPacket=0&multiStatements=true&parseTime=True&readTimeout=30s&timeout=5s&writeTimeout=10s",
 		buildDbCredentials(&conf),
 		conf.Db.Host,
 		conf.Db.Port,
@@ -84,6 +91,9 @@ func NewGate() Gate {
 	if err != nil {
 		panic(errors.Wrap(err, "failed creating connection pool"))
 	}
+	db.SetConnMaxLifetime(conf.Db.MaxLifetime)
+	db.SetMaxIdleConns(conf.Db.MaxIdle)
+	db.SetMaxOpenConns(conf.Db.MaxOpen)
 
 	// Initialize database when in development mode
 	if config.GetEnvironment() == config.Dev {
