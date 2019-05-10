@@ -51,19 +51,23 @@ type ComplexityRoot struct {
 		CreatedOn     func(childComplexity int) int
 		DeletedOn     func(childComplexity int) int
 		ID            func(childComplexity int) int
+		Leaf          func(childComplexity int) int
 		Name          func(childComplexity int) int
 		Parent        func(childComplexity int) int
 		UpdatedOn     func(childComplexity int) int
 	}
 
 	Mutation struct {
-		CreateAccount func(childComplexity int, name string, parentID *int) int
+		CreateAccount     func(childComplexity int, name string, parentID *int) int
+		CreateTransaction func(childComplexity int, origin string, sourceAccountID int, targetAccountID int, amount float64, comments *string) int
 	}
 
 	Query struct {
-		Account      func(childComplexity int, id int) int
-		Accounts     func(childComplexity int) int
-		Transactions func(childComplexity int, from time.Time, until time.Time) int
+		Account       func(childComplexity int, id int) int
+		Accounts      func(childComplexity int) int
+		ChildAccounts func(childComplexity int, parentID int) int
+		Transaction   func(childComplexity int, id int) int
+		Transactions  func(childComplexity int, from time.Time, until time.Time) int
 	}
 
 	Transaction struct {
@@ -84,10 +88,13 @@ type AccountResolver interface {
 }
 type MutationResolver interface {
 	CreateAccount(ctx context.Context, name string, parentID *int) (*model.Account, error)
+	CreateTransaction(ctx context.Context, origin string, sourceAccountID int, targetAccountID int, amount float64, comments *string) (*model.Transaction, error)
 }
 type QueryResolver interface {
 	Account(ctx context.Context, id int) (*model.Account, error)
 	Accounts(ctx context.Context) ([]model.Account, error)
+	ChildAccounts(ctx context.Context, parentID int) ([]model.Account, error)
+	Transaction(ctx context.Context, id int) (*model.Transaction, error)
 	Transactions(ctx context.Context, from time.Time, until time.Time) ([]model.Transaction, error)
 }
 type TransactionResolver interface {
@@ -145,6 +152,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Account.ID(childComplexity), true
 
+	case "Account.Leaf":
+		if e.complexity.Account.Leaf == nil {
+			break
+		}
+
+		return e.complexity.Account.Leaf(childComplexity), true
+
 	case "Account.Name":
 		if e.complexity.Account.Name == nil {
 			break
@@ -178,6 +192,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateAccount(childComplexity, args["name"].(string), args["parentId"].(*int)), true
 
+	case "Mutation.CreateTransaction":
+		if e.complexity.Mutation.CreateTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createTransaction_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateTransaction(childComplexity, args["origin"].(string), args["sourceAccountId"].(int), args["targetAccountId"].(int), args["amount"].(float64), args["comments"].(*string)), true
+
 	case "Query.Account":
 		if e.complexity.Query.Account == nil {
 			break
@@ -196,6 +222,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Accounts(childComplexity), true
+
+	case "Query.ChildAccounts":
+		if e.complexity.Query.ChildAccounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_childAccounts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ChildAccounts(childComplexity, args["parentId"].(int)), true
+
+	case "Query.Transaction":
+		if e.complexity.Query.Transaction == nil {
+			break
+		}
+
+		args, err := ec.field_Query_transaction_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Transaction(childComplexity, args["id"].(int)), true
 
 	case "Query.Transactions":
 		if e.complexity.Query.Transactions == nil {
@@ -345,11 +395,14 @@ schema {
 type Query {
     account(id: Int!): Account!
     accounts: [Account!]!
+    childAccounts(parentId: Int!): [Account!]!
+    transaction(id: Int!): Transaction!
     transactions(from: Time!, until: Time!): [Transaction!]!
 }
 
 type Mutation {
     createAccount(name: String!, parentId: Int): Account!
+    createTransaction(origin: String!, sourceAccountId: Int!, targetAccountId: Int!, amount: Float!, comments: String): Transaction!
 }
 `},
 	&ast.Source{Name: "internal/model/Account.graphql", Input: `type Account {
@@ -361,6 +414,7 @@ type Mutation {
     parent: Account
     balance: Float!
     childAccounts: [Account!]
+    leaf: Boolean!
 }
 `},
 	&ast.Source{Name: "internal/model/Transaction.graphql", Input: `type Transaction {
@@ -401,6 +455,52 @@ func (ec *executionContext) field_Mutation_createAccount_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createTransaction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["origin"]; ok {
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["origin"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["sourceAccountId"]; ok {
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["sourceAccountId"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["targetAccountId"]; ok {
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["targetAccountId"] = arg2
+	var arg3 float64
+	if tmp, ok := rawArgs["amount"]; ok {
+		arg3, err = ec.unmarshalNFloat2float64(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["amount"] = arg3
+	var arg4 *string
+	if tmp, ok := rawArgs["comments"]; ok {
+		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["comments"] = arg4
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -416,6 +516,34 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 }
 
 func (ec *executionContext) field_Query_account_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_childAccounts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["parentId"]; ok {
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["parentId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_transaction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 int
@@ -687,6 +815,33 @@ func (ec *executionContext) _Account_childAccounts(ctx context.Context, field gr
 	return ec.marshalOAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Account_leaf(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Account",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Leaf, nil
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_createAccount(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
@@ -719,6 +874,40 @@ func (ec *executionContext) _Mutation_createAccount(ctx context.Context, field g
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_createTransaction(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_createTransaction_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx.Args = args
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateTransaction(rctx, args["origin"].(string), args["sourceAccountId"].(int), args["targetAccountId"].(int), args["amount"].(float64), args["comments"].(*string))
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Transaction)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_account(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -780,6 +969,74 @@ func (ec *executionContext) _Query_accounts(ctx context.Context, field graphql.C
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_childAccounts(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_childAccounts_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx.Args = args
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ChildAccounts(rctx, args["parentId"].(int))
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]model.Account)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_transaction(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_transaction_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	rctx.Args = args
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Transaction(rctx, args["id"].(int))
+	})
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Transaction)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_transactions(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -1953,6 +2210,11 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 				res = ec._Account_childAccounts(ctx, field, obj)
 				return res
 			})
+		case "leaf":
+			out.Values[i] = ec._Account_leaf(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalid = true
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1981,6 +2243,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "createAccount":
 			out.Values[i] = ec._Mutation_createAccount(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalid = true
+			}
+		case "createTransaction":
+			out.Values[i] = ec._Mutation_createTransaction(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
@@ -2033,6 +2300,34 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_accounts(ctx, field)
+				if res == graphql.Null {
+					invalid = true
+				}
+				return res
+			})
+		case "childAccounts":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_childAccounts(ctx, field)
+				if res == graphql.Null {
+					invalid = true
+				}
+				return res
+			})
+		case "transaction":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_transaction(ctx, field)
 				if res == graphql.Null {
 					invalid = true
 				}
@@ -2520,6 +2815,16 @@ func (ec *executionContext) marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋ
 	}
 	wg.Wait()
 	return ret
+}
+
+func (ec *executionContext) marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v *model.Transaction) graphql.Marshaler {
+	if v == nil {
+		if !ec.HasError(graphql.GetResolverContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Transaction(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {

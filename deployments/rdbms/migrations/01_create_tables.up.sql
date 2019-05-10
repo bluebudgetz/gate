@@ -8,6 +8,7 @@ CREATE TABLE accounts
     deleted_on TIMESTAMP    NULL,
     name       VARCHAR(255) NOT NULL,
     parent_id  INT UNSIGNED NULL,
+    balance    FLOAT SIGNED NOT NULL DEFAULT 0,
     CONSTRAINT FOREIGN KEY fk_accounts_parent_id (parent_id) REFERENCES accounts (id)
         ON UPDATE RESTRICT
         ON DELETE RESTRICT

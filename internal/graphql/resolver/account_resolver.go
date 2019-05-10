@@ -12,14 +12,14 @@ type accountResolver struct{ *Resolver }
 func (r *accountResolver) account(ctx context.Context, id int) (*model.Account, error) {
 	_sql := `
 	SELECT
-       acc.id,
-	   acc.created_on, 
-	   acc.updated_on, 
-	   acc.deleted_on, 
-	   acc.name, 
-	   acc.parent_id,
-	   IFNULL((SELECT SUM(tx.amount) FROM bb.transactions AS tx WHERE tx.target_account_id = acc.id), 0) -
-	   IFNULL((SELECT SUM(tx.amount) FROM bb.transactions AS tx WHERE tx.source_account_id = acc.id), 0) AS balance
+       	acc.id,
+	   	acc.created_on, 
+	   	acc.updated_on, 
+	   	acc.deleted_on, 
+	   	acc.name, 
+	   	acc.parent_id,
+	   	acc.balance,
+		IF((SELECT COUNT(*) FROM bb.accounts WHERE bb.accounts.parent_id = acc.id) = 0, TRUE, FALSE) AS leaf 
 	FROM
     	bb.accounts AS acc
 	WHERE
@@ -27,7 +27,7 @@ func (r *accountResolver) account(ctx context.Context, id int) (*model.Account, 
 	row := middleware.GetDB(ctx).QueryRowContext(ctx, _sql, id)
 
 	var account model.Account
-	err := row.Scan(&account.ID, &account.CreatedOn, &account.UpdatedOn, &account.DeletedOn, &account.Name, &account.ParentID, &account.Balance)
+	err := row.Scan(&account.ID, &account.CreatedOn, &account.UpdatedOn, &account.DeletedOn, &account.Name, &account.ParentID, &account.Balance, &account.Leaf)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed scanning account %d", id)
 	}
@@ -37,14 +37,14 @@ func (r *accountResolver) account(ctx context.Context, id int) (*model.Account, 
 func (r *accountResolver) accounts(ctx context.Context, where string, args ...interface{}) ([]model.Account, error) {
 	_sql := `
 	SELECT
-       acc.id,
-	   acc.created_on, 
-	   acc.updated_on, 
-	   acc.deleted_on, 
-	   acc.name, 
-	   acc.parent_id,
-	   IFNULL((SELECT SUM(tx.amount) FROM bb.transactions AS tx WHERE tx.target_account_id = acc.id), 0) -
-	   IFNULL((SELECT SUM(tx.amount) FROM bb.transactions AS tx WHERE tx.source_account_id = acc.id), 0) AS balance
+       	acc.id,
+	   	acc.created_on, 
+	   	acc.updated_on, 
+	   	acc.deleted_on, 
+	   	acc.name, 
+	   	acc.parent_id,
+	   	acc.balance,
+		IF((SELECT COUNT(*) FROM bb.accounts WHERE bb.accounts.parent_id = acc.id) = 0, TRUE, FALSE) AS leaf 
 	FROM
     	bb.accounts AS acc
 	WHERE
@@ -61,7 +61,7 @@ func (r *accountResolver) accounts(ctx context.Context, where string, args ...in
 	accounts := make([]model.Account, 0, 100)
 	for rows.Next() {
 		var account model.Account
-		err := rows.Scan(&account.ID, &account.CreatedOn, &account.UpdatedOn, &account.DeletedOn, &account.Name, &account.ParentID, &account.Balance)
+		err := rows.Scan(&account.ID, &account.CreatedOn, &account.UpdatedOn, &account.DeletedOn, &account.Name, &account.ParentID, &account.Balance, &account.Leaf)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed scanning account")
 		}

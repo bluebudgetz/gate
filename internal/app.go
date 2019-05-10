@@ -6,19 +6,16 @@ import (
 	"github.com/99designs/gqlgen/handler"
 	"github.com/bluebudgetz/common/pkg/config"
 	"github.com/bluebudgetz/common/pkg/logging"
-	"github.com/bluebudgetz/gate/internal/assets"
 	"github.com/bluebudgetz/gate/internal/graphql/impl"
 	"github.com/bluebudgetz/gate/internal/graphql/resolver"
 	"github.com/bluebudgetz/gate/internal/middleware"
+	"github.com/bluebudgetz/gate/internal/migrator"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	"github.com/rs/cors"
-	"io/ioutil"
 	"net/http"
-	"os"
 )
 
 type Config struct {
@@ -89,41 +86,18 @@ func NewGate() Gate {
 	}
 
 	// Initialize database when in development mode
-	// TODO: create a "scripts/migrate.go" file for running migrations
 	if config.GetEnvironment() == config.Dev {
-
-		// Extract all migrations to a temporary directory
-		logging.Log.Info("Extracting migrations")
-		tempMigrationsPath, err := ioutil.TempDir("", "bluebudgetzMigrations")
+		m, err := migrator.New(db)
 		if err != nil {
-			panic(errors.Wrap(err, "failed extracting database migration files"))
+			panic(err)
 		}
-		defer os.RemoveAll(tempMigrationsPath)
-		if err = assets.RestoreAssets(tempMigrationsPath, "deployments/rdbms/migrations"); err != nil {
-			panic(errors.Wrap(err, "failed extracting database migration files"))
-		}
-
-		logging.Log.Info("Migrating schema")
-		driver, err := mysql.WithInstance(db, &mysql.Config{})
+		err = m.Migrate()
 		if err != nil {
-			panic(errors.Wrap(err, "failed creating database migration driver"))
+			panic(err)
 		}
-
-		// Migrate all the way down, and then all the way up
-		migrator, err := migrate.NewWithDatabaseInstance("file://"+tempMigrationsPath+"/deployments/rdbms/migrations", "mysql", driver)
+		err = m.Populate()
 		if err != nil {
-			panic(errors.Wrap(err, "failed creating database migrator"))
-		}
-		if err = migrator.Down(); err != nil && err != migrate.ErrNoChange {
-			panic(errors.Wrap(err, "failed to drop database"))
-		}
-		if err = migrator.Up(); err != nil && err != migrate.ErrNoChange {
-			panic(errors.Wrap(err, "failed to migrate database"))
-		}
-
-		// Run data initialization
-		if _, err = db.Exec(string(assets.MustAsset("assets/rdbms/init.sql"))); err != nil {
-			panic(errors.Wrap(err, "failed initializing schema"))
+			panic(err)
 		}
 	}
 

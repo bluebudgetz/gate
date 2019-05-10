@@ -1,6 +1,6 @@
 package main
 
-//go:generate go-bindata -o ./internal/assets/bindata.go -ignore ".DS_Store" -pkg assets assets/... deployments/...
+//go:generate go-bindata -o ./internal/assets/bindata.go -ignore ".DS_Store" -pkg assets deployments/...
 //go:generate go run cmd/gqlgen/main.go
 
 import (

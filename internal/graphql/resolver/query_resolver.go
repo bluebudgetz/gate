@@ -16,6 +16,14 @@ func (r *queryResolver) Accounts(ctx context.Context) ([]model.Account, error) {
 	return r.Resolver.Account().(*accountResolver).accounts(ctx, "acc.parent_id IS NULL")
 }
 
+func (r *queryResolver) ChildAccounts(ctx context.Context, parentID int) ([]model.Account, error) {
+	return r.Resolver.Account().(*accountResolver).accounts(ctx, "acc.parent_id = ?", parentID)
+}
+
+func (r *queryResolver) Transaction(ctx context.Context, id int) (*model.Transaction, error) {
+	return r.Resolver.Transaction().(*transactionResolver).transaction(ctx, id)
+}
+
 func (r *queryResolver) Transactions(ctx context.Context, from time.Time, until time.Time) ([]model.Transaction, error) {
 	return r.Resolver.Transaction().(*transactionResolver).transactions(ctx, "created_on >= ? AND created_on <= ?", from, until)
 }

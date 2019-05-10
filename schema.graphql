@@ -8,9 +8,12 @@ schema {
 type Query {
     account(id: Int!): Account!
     accounts: [Account!]!
+    childAccounts(parentId: Int!): [Account!]!
+    transaction(id: Int!): Transaction!
     transactions(from: Time!, until: Time!): [Transaction!]!
 }
 
 type Mutation {
     createAccount(name: String!, parentId: Int): Account!
+    createTransaction(origin: String!, sourceAccountId: Int!, targetAccountId: Int!, amount: Float!, comments: String): Transaction!
 }

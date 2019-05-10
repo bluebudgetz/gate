@@ -7,4 +7,5 @@ type Account {
     parent: Account
     balance: Float!
     childAccounts: [Account!]
+    leaf: Boolean!
 }
