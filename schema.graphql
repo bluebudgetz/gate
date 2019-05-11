@@ -9,18 +9,16 @@ type Account {
     id: Int!
     createdOn: Time!
     updatedOn: Time
-    deletedOn: Time
     name: String!
-    parent: Account
+    childCount: Int!
     incoming: Float!
     outgoing: Float!
-    childAccounts: [Account!]
-    leaf: Boolean!
 }
 
 type Transaction {
     id: Int!
     createdOn: Time!
+    updatedOn: Time
     origin: String!
     source: Account!
     target: Account!
@@ -30,7 +28,7 @@ type Transaction {
 
 type Query {
     account(id: Int!): Account!
-    accounts: [Account!]!
+    rootAccounts: [Account!]!
     childAccounts(parentId: Int!): [Account!]!
     transaction(id: Int!): Transaction!
     transactions(from: Time!, until: Time!): [Transaction!]!
@@ -38,5 +36,10 @@ type Query {
 
 type Mutation {
     createAccount(name: String!, parentId: Int): Account!
-    createTransaction(origin: String!, sourceAccountId: Int!, targetAccountId: Int!, amount: Float!, comments: String): Transaction!
+    createTransaction(
+        origin: String!,
+        sourceAccountId: Int!,
+        targetAccountId: Int!,
+        amount: Float!,
+        comments: String): Transaction!
 }

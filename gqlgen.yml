@@ -9,15 +9,15 @@ exec:
 
 # Where to place generated Go models (if any)
 model:
-  filename: internal/model/generated.go
+  filename: internal/graphql/model/generated.go
   package: model
 
 # Set of pre-existing models to import
 models:
   Account:
-    model: github.com/bluebudgetz/gate/internal/model.Account
+    model: github.com/bluebudgetz/gate/internal/graphql/model.Account
   Transaction:
-    model: github.com/bluebudgetz/gate/internal/model.Transaction
+    model: github.com/bluebudgetz/gate/internal/graphql/model.Transaction
 
 # Where to place generated stub resolvers (optional, disabled since we already have the resolvers)
 #resolver:

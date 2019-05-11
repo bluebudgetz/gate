@@ -12,7 +12,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/bluebudgetz/gate/internal/model"
+	"github.com/bluebudgetz/gate/internal/graphql/model"
 	"github.com/vektah/gqlparser"
 	"github.com/vektah/gqlparser/ast"
 )
@@ -35,7 +35,6 @@ type Config struct {
 }
 
 type ResolverRoot interface {
-	Account() AccountResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 	Transaction() TransactionResolver
@@ -46,16 +45,13 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Account struct {
-		ChildAccounts func(childComplexity int) int
-		CreatedOn     func(childComplexity int) int
-		DeletedOn     func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Incoming      func(childComplexity int) int
-		Leaf          func(childComplexity int) int
-		Name          func(childComplexity int) int
-		Outgoing      func(childComplexity int) int
-		Parent        func(childComplexity int) int
-		UpdatedOn     func(childComplexity int) int
+		ChildCount func(childComplexity int) int
+		CreatedOn  func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Incoming   func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Outgoing   func(childComplexity int) int
+		UpdatedOn  func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -65,8 +61,8 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Account       func(childComplexity int, id int) int
-		Accounts      func(childComplexity int) int
 		ChildAccounts func(childComplexity int, parentID int) int
+		RootAccounts  func(childComplexity int) int
 		Transaction   func(childComplexity int, id int) int
 		Transactions  func(childComplexity int, from time.Time, until time.Time) int
 	}
@@ -79,21 +75,17 @@ type ComplexityRoot struct {
 		Origin    func(childComplexity int) int
 		Source    func(childComplexity int) int
 		Target    func(childComplexity int) int
+		UpdatedOn func(childComplexity int) int
 	}
 }
 
-type AccountResolver interface {
-	Parent(ctx context.Context, obj *model.Account) (*model.Account, error)
-
-	ChildAccounts(ctx context.Context, obj *model.Account) ([]model.Account, error)
-}
 type MutationResolver interface {
 	CreateAccount(ctx context.Context, name string, parentID *int) (*model.Account, error)
 	CreateTransaction(ctx context.Context, origin string, sourceAccountID int, targetAccountID int, amount float64, comments *string) (*model.Transaction, error)
 }
 type QueryResolver interface {
 	Account(ctx context.Context, id int) (*model.Account, error)
-	Accounts(ctx context.Context) ([]model.Account, error)
+	RootAccounts(ctx context.Context) ([]model.Account, error)
 	ChildAccounts(ctx context.Context, parentID int) ([]model.Account, error)
 	Transaction(ctx context.Context, id int) (*model.Transaction, error)
 	Transactions(ctx context.Context, from time.Time, until time.Time) ([]model.Transaction, error)
@@ -118,12 +110,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Account.ChildAccounts":
-		if e.complexity.Account.ChildAccounts == nil {
+	case "Account.ChildCount":
+		if e.complexity.Account.ChildCount == nil {
 			break
 		}
 
-		return e.complexity.Account.ChildAccounts(childComplexity), true
+		return e.complexity.Account.ChildCount(childComplexity), true
 
 	case "Account.CreatedOn":
 		if e.complexity.Account.CreatedOn == nil {
@@ -131,13 +123,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Account.CreatedOn(childComplexity), true
-
-	case "Account.DeletedOn":
-		if e.complexity.Account.DeletedOn == nil {
-			break
-		}
-
-		return e.complexity.Account.DeletedOn(childComplexity), true
 
 	case "Account.ID":
 		if e.complexity.Account.ID == nil {
@@ -153,13 +138,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Account.Incoming(childComplexity), true
 
-	case "Account.Leaf":
-		if e.complexity.Account.Leaf == nil {
-			break
-		}
-
-		return e.complexity.Account.Leaf(childComplexity), true
-
 	case "Account.Name":
 		if e.complexity.Account.Name == nil {
 			break
@@ -173,13 +151,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Account.Outgoing(childComplexity), true
-
-	case "Account.Parent":
-		if e.complexity.Account.Parent == nil {
-			break
-		}
-
-		return e.complexity.Account.Parent(childComplexity), true
 
 	case "Account.UpdatedOn":
 		if e.complexity.Account.UpdatedOn == nil {
@@ -224,13 +195,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Account(childComplexity, args["id"].(int)), true
 
-	case "Query.Accounts":
-		if e.complexity.Query.Accounts == nil {
-			break
-		}
-
-		return e.complexity.Query.Accounts(childComplexity), true
-
 	case "Query.ChildAccounts":
 		if e.complexity.Query.ChildAccounts == nil {
 			break
@@ -242,6 +206,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ChildAccounts(childComplexity, args["parentId"].(int)), true
+
+	case "Query.RootAccounts":
+		if e.complexity.Query.RootAccounts == nil {
+			break
+		}
+
+		return e.complexity.Query.RootAccounts(childComplexity), true
 
 	case "Query.Transaction":
 		if e.complexity.Query.Transaction == nil {
@@ -315,6 +286,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Transaction.Target(childComplexity), true
+
+	case "Transaction.UpdatedOn":
+		if e.complexity.Transaction.UpdatedOn == nil {
+			break
+		}
+
+		return e.complexity.Transaction.UpdatedOn(childComplexity), true
 
 	}
 	return 0, false
@@ -404,18 +382,16 @@ type Account {
     id: Int!
     createdOn: Time!
     updatedOn: Time
-    deletedOn: Time
     name: String!
-    parent: Account
+    childCount: Int!
     incoming: Float!
     outgoing: Float!
-    childAccounts: [Account!]
-    leaf: Boolean!
 }
 
 type Transaction {
     id: Int!
     createdOn: Time!
+    updatedOn: Time
     origin: String!
     source: Account!
     target: Account!
@@ -425,7 +401,7 @@ type Transaction {
 
 type Query {
     account(id: Int!): Account!
-    accounts: [Account!]!
+    rootAccounts: [Account!]!
     childAccounts(parentId: Int!): [Account!]!
     transaction(id: Int!): Transaction!
     transactions(from: Time!, until: Time!): [Transaction!]!
@@ -433,7 +409,12 @@ type Query {
 
 type Mutation {
     createAccount(name: String!, parentId: Int): Account!
-    createTransaction(origin: String!, sourceAccountId: Int!, targetAccountId: Int!, amount: Float!, comments: String): Transaction!
+    createTransaction(
+        origin: String!,
+        sourceAccountId: Int!,
+        targetAccountId: Int!,
+        amount: Float!,
+        comments: String): Transaction!
 }
 `},
 )
@@ -698,30 +679,6 @@ func (ec *executionContext) _Account_updatedOn(ctx context.Context, field graphq
 	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Account_deletedOn(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object:   "Account",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.DeletedOn, nil
-	})
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Account_name(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
@@ -749,28 +706,31 @@ func (ec *executionContext) _Account_name(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Account_parent(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
+func (ec *executionContext) _Account_childCount(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
 	rctx := &graphql.ResolverContext{
 		Object:   "Account",
 		Field:    field,
 		Args:     nil,
-		IsMethod: true,
+		IsMethod: false,
 	}
 	ctx = graphql.WithResolverContext(ctx, rctx)
 	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
 	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Account().Parent(rctx, obj)
+		return obj.ChildCount, nil
 	})
 	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Account)
+	res := resTmp.(int)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalOAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Account_incoming(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
@@ -827,57 +787,6 @@ func (ec *executionContext) _Account_outgoing(ctx context.Context, field graphql
 	return ec.marshalNFloat2float64(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Account_childAccounts(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object:   "Account",
-		Field:    field,
-		Args:     nil,
-		IsMethod: true,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Account().ChildAccounts(rctx, obj)
-	})
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]model.Account)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalOAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Account_leaf(ctx context.Context, field graphql.CollectedField, obj *model.Account) graphql.Marshaler {
-	ctx = ec.Tracer.StartFieldExecution(ctx, field)
-	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
-	rctx := &graphql.ResolverContext{
-		Object:   "Account",
-		Field:    field,
-		Args:     nil,
-		IsMethod: false,
-	}
-	ctx = graphql.WithResolverContext(ctx, rctx)
-	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
-	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Leaf, nil
-	})
-	if resTmp == nil {
-		if !ec.HasError(rctx) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	rctx.Result = res
-	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
 func (ec *executionContext) _Mutation_createAccount(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
@@ -909,7 +818,7 @@ func (ec *executionContext) _Mutation_createAccount(ctx context.Context, field g
 	res := resTmp.(*model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_createTransaction(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -943,7 +852,7 @@ func (ec *executionContext) _Mutation_createTransaction(ctx context.Context, fie
 	res := resTmp.(*model.Transaction)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, field.Selections, res)
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_account(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -977,10 +886,10 @@ func (ec *executionContext) _Query_account(ctx context.Context, field graphql.Co
 	res := resTmp.(*model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_accounts(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
+func (ec *executionContext) _Query_rootAccounts(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
 	rctx := &graphql.ResolverContext{
@@ -993,7 +902,7 @@ func (ec *executionContext) _Query_accounts(ctx context.Context, field graphql.C
 	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
 	resTmp := ec.FieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Accounts(rctx)
+		return ec.resolvers.Query().RootAccounts(rctx)
 	})
 	if resTmp == nil {
 		if !ec.HasError(rctx) {
@@ -1004,7 +913,7 @@ func (ec *executionContext) _Query_accounts(ctx context.Context, field graphql.C
 	res := resTmp.([]model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_childAccounts(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -1038,7 +947,7 @@ func (ec *executionContext) _Query_childAccounts(ctx context.Context, field grap
 	res := resTmp.([]model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_transaction(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -1072,7 +981,7 @@ func (ec *executionContext) _Query_transaction(ctx context.Context, field graphq
 	res := resTmp.(*model.Transaction)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, field.Selections, res)
+	return ec.marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_transactions(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -1106,7 +1015,7 @@ func (ec *executionContext) _Query_transactions(ctx context.Context, field graph
 	res := resTmp.([]model.Transaction)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, field.Selections, res)
+	return ec.marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) graphql.Marshaler {
@@ -1218,6 +1127,30 @@ func (ec *executionContext) _Transaction_createdOn(ctx context.Context, field gr
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Transaction_updatedOn(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) graphql.Marshaler {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
+	rctx := &graphql.ResolverContext{
+		Object:   "Transaction",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec.FieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedOn, nil
+	})
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Transaction_origin(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) graphql.Marshaler {
 	ctx = ec.Tracer.StartFieldExecution(ctx, field)
 	defer func() { ec.Tracer.EndFieldExecution(ctx) }()
@@ -1269,7 +1202,7 @@ func (ec *executionContext) _Transaction_source(ctx context.Context, field graph
 	res := resTmp.(*model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_target(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) graphql.Marshaler {
@@ -1296,7 +1229,7 @@ func (ec *executionContext) _Transaction_target(ctx context.Context, field graph
 	res := resTmp.(*model.Account)
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
-	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, field.Selections, res)
+	return ec.marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_amount(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) graphql.Marshaler {
@@ -2212,24 +2145,16 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "updatedOn":
 			out.Values[i] = ec._Account_updatedOn(ctx, field, obj)
-		case "deletedOn":
-			out.Values[i] = ec._Account_deletedOn(ctx, field, obj)
 		case "name":
 			out.Values[i] = ec._Account_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
-		case "parent":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Account_parent(ctx, field, obj)
-				return res
-			})
+		case "childCount":
+			out.Values[i] = ec._Account_childCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalid = true
+			}
 		case "incoming":
 			out.Values[i] = ec._Account_incoming(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -2237,22 +2162,6 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "outgoing":
 			out.Values[i] = ec._Account_outgoing(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalid = true
-			}
-		case "childAccounts":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Account_childAccounts(ctx, field, obj)
-				return res
-			})
-		case "leaf":
-			out.Values[i] = ec._Account_leaf(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
@@ -2332,7 +2241,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
-		case "accounts":
+		case "rootAccounts":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -2340,7 +2249,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_accounts(ctx, field)
+				res = ec._Query_rootAccounts(ctx, field)
 				if res == graphql.Null {
 					invalid = true
 				}
@@ -2424,6 +2333,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				invalid = true
 			}
+		case "updatedOn":
+			out.Values[i] = ec._Transaction_updatedOn(ctx, field, obj)
 		case "origin":
 			out.Values[i] = ec._Transaction_origin(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -2720,11 +2631,11 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
-func (ec *executionContext) marshalNAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v model.Account) graphql.Marshaler {
+func (ec *executionContext) marshalNAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v model.Account) graphql.Marshaler {
 	return ec._Account(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v []model.Account) graphql.Marshaler {
+func (ec *executionContext) marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v []model.Account) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2748,7 +2659,7 @@ func (ec *executionContext) marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgate
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, sel, v[i])
+			ret[i] = ec.marshalNAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2761,7 +2672,7 @@ func (ec *executionContext) marshalNAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgate
 	return ret
 }
 
-func (ec *executionContext) marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
+func (ec *executionContext) marshalNAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
 	if v == nil {
 		if !ec.HasError(graphql.GetResolverContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -2817,11 +2728,11 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return graphql.MarshalTime(v)
 }
 
-func (ec *executionContext) marshalNTransaction2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v model.Transaction) graphql.Marshaler {
+func (ec *executionContext) marshalNTransaction2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v model.Transaction) graphql.Marshaler {
 	return ec._Transaction(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v []model.Transaction) graphql.Marshaler {
+func (ec *executionContext) marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v []model.Transaction) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -2845,7 +2756,7 @@ func (ec *executionContext) marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋ
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNTransaction2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx, sel, v[i])
+			ret[i] = ec.marshalNTransaction2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -2858,7 +2769,7 @@ func (ec *executionContext) marshalNTransaction2ᚕgithubᚗcomᚋbluebudgetzᚋ
 	return ret
 }
 
-func (ec *executionContext) marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v *model.Transaction) graphql.Marshaler {
+func (ec *executionContext) marshalNTransaction2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋgraphqlᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v *model.Transaction) graphql.Marshaler {
 	if v == nil {
 		if !ec.HasError(graphql.GetResolverContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -3080,57 +2991,6 @@ func (ec *executionContext) unmarshalN__TypeKind2string(ctx context.Context, v i
 
 func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	return graphql.MarshalString(v)
-}
-
-func (ec *executionContext) marshalOAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v model.Account) graphql.Marshaler {
-	return ec._Account(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalOAccount2ᚕgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v []model.Account) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		rctx := &graphql.ResolverContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithResolverContext(ctx, rctx)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNAccount2githubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-	return ret
-}
-
-func (ec *executionContext) marshalOAccount2ᚖgithubᚗcomᚋbluebudgetzᚋgateᚋinternalᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *model.Account) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Account(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interface{}) (bool, error) {

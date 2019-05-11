@@ -11,7 +11,8 @@ import (
 	"github.com/bluebudgetz/gate/internal/graphql/resolver"
 	"github.com/bluebudgetz/gate/internal/middleware"
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/pkg/errors"
 	"github.com/vektah/gqlparser/ast"
 	"github.com/vektah/gqlparser/parser"
@@ -32,12 +33,14 @@ type Migrator struct {
 	schema graphql.ExecutableSchema
 	data   struct {
 		accounts struct {
-			myEmployer       createAccountResponse
-			acmeBank         createAccountResponse
-			aig              createAccountResponse
-			myBankAccount    createAccountResponse
-			loansAccount     createAccountResponse
-			insuranceAccount createAccountResponse
+			myEmployer             createAccountResponse
+			acmeBank               createAccountResponse
+			aig                    createAccountResponse
+			myBankAccount          createAccountResponse
+			loansAccount           createAccountResponse
+			insuranceAccount       createAccountResponse
+			lifeInsuranceAccount   createAccountResponse
+			healthInsuranceAccount createAccountResponse
 		}
 	}
 }
@@ -65,13 +68,14 @@ func (m *Migrator) Migrate() error {
 	}
 
 	logging.Log.Info("Migrating schema")
-	driver, err := mysql.WithInstance(m.db, &mysql.Config{})
+	driver, err := postgres.WithInstance(m.db, &postgres.Config{})
 	if err != nil {
 		return errors.Wrap(err, "failed creating database migration driver")
 	}
 
 	// Migrate all the way down, and then all the way up
-	migrator, err := migrate.NewWithDatabaseInstance("file://"+tempMigrationsPath+"/deployments/rdbms/migrations", "mysql", driver)
+	rdbmsUrl := "file://" + tempMigrationsPath + "/deployments/rdbms/migrations"
+	migrator, err := migrate.NewWithDatabaseInstance(rdbmsUrl, "postgres", driver)
 	if err != nil {
 		return errors.Wrap(err, "failed creating database migrator")
 	}
@@ -146,6 +150,16 @@ func (m *Migrator) populateAccounts() error {
 		return err
 	}
 
+	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Life", "parentId": acc.insuranceAccount.Result.ID}, &acc.lifeInsuranceAccount)
+	if err != nil {
+		return err
+	}
+
+	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Health", "parentId": acc.insuranceAccount.Result.ID}, &acc.healthInsuranceAccount)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -178,7 +192,12 @@ func (m *Migrator) populateTransactions() error {
 		return err
 	}
 
-	err = m.runMutation(query, createTxVarsMap(acc.insuranceAccount, acc.aig, 199, "Life insurance"), nil)
+	err = m.runMutation(query, createTxVarsMap(acc.lifeInsuranceAccount, acc.aig, 199, "Life insurance"), nil)
+	if err != nil {
+		return err
+	}
+
+	err = m.runMutation(query, createTxVarsMap(acc.healthInsuranceAccount, acc.aig, 98, "Health insurance"), nil)
 	if err != nil {
 		return err
 	}

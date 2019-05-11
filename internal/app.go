@@ -12,7 +12,7 @@ import (
 	"github.com/bluebudgetz/gate/internal/migrator"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/stdlib"
 	"github.com/pkg/errors"
 	"github.com/rs/cors"
 	"net/http"
@@ -61,8 +61,7 @@ func NewGate() Gate {
 	v.SetDefault("db.username", "")
 	v.SetDefault("db.password", "")
 	v.SetDefault("db.host", "localhost")
-	v.SetDefault("db.port", 3306)
-	v.SetDefault("db.sqlPath", "/db")
+	v.SetDefault("db.port", 5432)
 	v.SetDefault("db.maxLifetime", 60 * time.Second)
 	v.SetDefault("db.maxIdle", int(5))
 	v.SetDefault("db.maxOpen", int(15))
@@ -78,14 +77,15 @@ func NewGate() Gate {
 	logging.Log.Infof("Configuration: %s", spew.Sdump(conf))
 
 	// Setup database connection pool
-	dbUrl := fmt.Sprintf(
-		"%s@tcp(%s:%d)/bb?collation=utf8mb4_bin&loc=Local&maxAllowedPacket=0&multiStatements=true&parseTime=True&readTimeout=30s&timeout=5s&writeTimeout=10s",
-		buildDbCredentials(&conf),
-		conf.Db.Host,
-		conf.Db.Port,
-	)
-	logging.Log.Info("Connecting to MariaDB")
-	db, err := sql.Open("mysql", dbUrl)
+	dsn := fmt.Sprintf("host=%s port=%d sslmode=disable connect_timeout=30", conf.Db.Host, conf.Db.Port)
+	if conf.Db.Username != "" {
+		dsn = fmt.Sprintf("%s user=%s", dsn, conf.Db.Username)
+	}
+	if conf.Db.Password != "" {
+		dsn = fmt.Sprintf("%s password=%s", dsn, conf.Db.Password)
+	}
+	logging.Log.Infof("Connecting to database at: %s", dsn)
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		panic(errors.Wrap(err, "failed creating connection pool"))
 	}
@@ -138,18 +138,6 @@ func (a *gate) Run() error {
 	port := a.config.Http.Port
 	logging.Log.Infof("Starting gate")
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), a.router)
-}
-
-func buildDbCredentials(conf *Config) string {
-	if conf.Db.Username != "" && conf.Db.Password != "" {
-		return conf.Db.Username + ":" + conf.Db.Password
-	} else if conf.Db.Username != "" {
-		return conf.Db.Username
-	} else if conf.Db.Password != "" {
-		return conf.Db.Password
-	} else {
-		return ""
-	}
 }
 
 func createGraphQLHandler() http.HandlerFunc {

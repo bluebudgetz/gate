@@ -2,24 +2,22 @@ package resolver
 
 import (
 	"context"
+	"github.com/bluebudgetz/gate/internal/graphql/model"
 	"github.com/bluebudgetz/gate/internal/middleware"
-	"github.com/bluebudgetz/gate/internal/model"
 	"github.com/pkg/errors"
 )
 
 type mutationResolver struct{ *Resolver }
 
 func (r *mutationResolver) CreateAccount(ctx context.Context, name string, parentID *int) (*model.Account, error) {
-	result, err := middleware.GetDB(ctx).ExecContext(ctx, "INSERT INTO bb.accounts (name, parent_id) VALUES (?, ?)", name, parentID)
+	var id int
+	err := middleware.GetDB(ctx).QueryRowContext(
+		ctx,
+		"INSERT INTO bb.accounts (name, parent_id) VALUES ($1, $2) RETURNING id",
+		name, parentID).Scan(&id)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed creating account '%s' (parent %d)", name, parentID)
+		return nil, errors.Wrapf(err, "failed creating account '%s'", name)
 	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed fetching newly-created account's ID")
-	}
-
 	return r.Query().Account(ctx, int(id))
 }
 
@@ -32,53 +30,13 @@ func (r *mutationResolver) CreateTransaction(ctx context.Context, origin string,
 	}
 	defer tx.Rollback()
 
-	result, err := tx.ExecContext(
+	var id int
+	err = tx.QueryRowContext(
 		ctx,
-		"INSERT INTO bb.transactions (origin, source_account_id, target_account_id, amount, comments) VALUES (?, ?, ?, ?, ?)",
-		origin, sourceAccountId, targetAccountId, amount, comments)
+		"INSERT INTO bb.transactions (origin, source_account_id, target_account_id, amount, comments) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		origin, sourceAccountId, targetAccountId, amount, comments).Scan(&id)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating transaction")
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed fetching newly-created transaction's ID")
-	}
-
-	accountId := &targetAccountId
-	for accountId != nil {
-		result, err = tx.ExecContext(
-			ctx,
-			"UPDATE bb.accounts SET incoming = incoming + ? WHERE id = ?",
-			amount, *accountId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed adding %d to balance of account %d (tx %d)", amount, *accountId, id)
-		}
-
-		account, err := r.Account().(*accountResolver).account(ctx, *accountId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed looking up account %d (tx %d)", *accountId, id)
-		}
-
-		accountId = account.ParentID
-	}
-
-	accountId = &sourceAccountId
-	for accountId != nil {
-		result, err = tx.ExecContext(
-			ctx,
-			"UPDATE bb.accounts SET outgoing = outgoing + ? WHERE id = ?",
-			amount, *accountId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed subtracting %d from balance of account %d (tx %d)", amount, accountId, id)
-		}
-
-		account, err := r.Account().(*accountResolver).account(ctx, *accountId)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed looking up account %d (tx %d)", *accountId, id)
-		}
-
-		accountId = account.ParentID
 	}
 
 	err = tx.Commit()

@@ -6,7 +6,6 @@ package main
 import (
 	. "github.com/bluebudgetz/common/pkg/logging"
 	"github.com/bluebudgetz/gate/internal"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"os"
 )
 

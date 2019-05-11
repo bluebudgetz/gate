@@ -9,10 +9,6 @@ import (
 
 type Resolver struct{}
 
-func (r *Resolver) Account() impl.AccountResolver {
-	return &accountResolver{r}
-}
-
 func (r *Resolver) Mutation() impl.MutationResolver {
 	return &mutationResolver{r}
 }
@@ -20,11 +16,12 @@ func (r *Resolver) Mutation() impl.MutationResolver {
 func (r *Resolver) Query() impl.QueryResolver {
 	return &queryResolver{r}
 }
+
 func (r *Resolver) Transaction() impl.TransactionResolver {
 	return &transactionResolver{r}
 }
 
-func hasProperty(ctx context.Context, selectionSet ast.SelectionSet, property string) bool {
+func (r *Resolver) isPropertySelected(ctx context.Context, selectionSet ast.SelectionSet, property string) bool {
 	reqCtx := graphql.GetRequestContext(ctx)
 	for _, sel := range selectionSet {
 		switch sel := sel.(type) {
@@ -33,10 +30,10 @@ func hasProperty(ctx context.Context, selectionSet ast.SelectionSet, property st
 				return true
 			}
 		case *ast.InlineFragment:
-			return hasProperty(ctx, sel.SelectionSet, property)
+			return r.isPropertySelected(ctx, sel.SelectionSet, property)
 		case *ast.FragmentSpread:
 			fragment := reqCtx.Doc.Fragments.ForName(sel.Name)
-			return hasProperty(ctx, fragment.SelectionSet, property)
+			return r.isPropertySelected(ctx, fragment.SelectionSet, property)
 		}
 	}
 	return false
