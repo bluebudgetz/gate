@@ -75,8 +75,6 @@ func NewGate() Gate {
 
 	// Setup logging
 	logging.ConfigureLogger(&conf.Log)
-
-	// Print config
 	logging.Log.Infof("Configuration: %s", spew.Sdump(conf))
 
 	// Setup database connection pool
