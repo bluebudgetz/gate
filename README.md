@@ -5,3 +5,4 @@ Bluebudgetz API gateway.
 ### Tasks
 
 - [ ] Create database migration command-line program
+- [ ] Implement authentication (JWT?)
