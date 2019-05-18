@@ -24,8 +24,3 @@ func Respond(w http.ResponseWriter, r *http.Request, statusCode int, value inter
 		}
 	}
 }
-
-func ExternalURL(r *http.Request) string {
-	// TODO: support "x-forwarded-proto" value for the scheme here
-	return "http://" + r.Host;
-}
