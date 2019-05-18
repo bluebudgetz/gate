@@ -1,57 +1,48 @@
 package migrator
 
 import (
-	"context"
+	"bytes"
 	"database/sql"
 	"encoding/json"
-	"github.com/99designs/gqlgen/graphql"
+	"fmt"
 	"github.com/bluebudgetz/common/pkg/logging"
 	"github.com/bluebudgetz/gate/internal/assets"
-	"github.com/bluebudgetz/gate/internal/graphql/impl"
-	"github.com/bluebudgetz/gate/internal/graphql/resolver"
-	"github.com/bluebudgetz/gate/internal/middleware"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/pkg/errors"
-	"github.com/vektah/gqlparser/ast"
-	"github.com/vektah/gqlparser/parser"
-	"github.com/vektah/gqlparser/validator"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"time"
 )
 
-type createAccountResponse struct {
-	Result struct {
-		ID int `json:"id"`
-	} `json:"createAccount"`
+type account struct {
+	ID     *int
+	Name   string
+	Parent *account
 }
 
 type Migrator struct {
-	db     *sql.DB
-	cfg    *impl.Config
-	schema graphql.ExecutableSchema
-	data   struct {
-		accounts struct {
-			myEmployer             createAccountResponse
-			acmeBank               createAccountResponse
-			aig                    createAccountResponse
-			myBankAccount          createAccountResponse
-			loansAccount           createAccountResponse
-			insuranceAccount       createAccountResponse
-			lifeInsuranceAccount   createAccountResponse
-			healthInsuranceAccount createAccountResponse
-		}
+	db       *sql.DB
+	http     *http.Client
+	port     int
+	accounts struct {
+		myEmployer      account
+		acmeBank        account
+		aig             account
+		myBankAccount   account
+		loans           account
+		houseMortgage   account
+		insurances      account
+		lifeInsurance   account
+		healthInsurance account
 	}
 }
 
-func New(db *sql.DB) (*Migrator, error) {
-	config := impl.Config{Resolvers: &resolver.Resolver{}}
-	return &Migrator{
-		db:     db,
-		cfg:    &config,
-		schema: impl.NewExecutableSchema(config),
-	}, nil
+func New(db *sql.DB, port int) (*Migrator, error) {
+	return &Migrator{db: db, http: &http.Client{Timeout: 30 * time.Second}, port: port}, nil
 }
 
 func (m *Migrator) Migrate() error {
@@ -102,102 +93,81 @@ func (m *Migrator) Populate() error {
 		return err
 	}
 
+	logging.Log.Info("Migration successful!")
 	return nil
 }
 
 func (m *Migrator) populateAccounts() error {
 	var err error
 
-	createQuery := `mutation($name: String!) { 
-		createAccount(name: $name) { 
-			id 
-		} 
-	}`
-	createChildQuery := `mutation($name: String!, $parentId: Int!) { 
-		createAccount(name: $name, parentId: $parentId) { 
-			id 
-		} 
-	}`
-	acc := &m.data.accounts
+	acc := &m.accounts
+	acc.myEmployer = account{Name: "Big Company"}
+	acc.acmeBank = account{Name: "A.C.M.E Bank"}
+	acc.aig = account{Name: "A.I.G"}
+	acc.myBankAccount = account{Name: "My Account"}
+	acc.loans = account{Name: "Loans", Parent: &acc.myBankAccount}
+	acc.insurances = account{Name: "Insurances", Parent: &acc.myBankAccount}
+	acc.houseMortgage = account{Name: "Mortgage", Parent: &acc.loans}
+	acc.lifeInsurance = account{Name: "Life Insurance", Parent: &acc.insurances}
+	acc.healthInsurance = account{Name: "Health Insurance", Parent: &acc.insurances}
 
-	err = m.runMutation(createQuery, map[string]interface{}{"name": "MyEmployer"}, &acc.myEmployer)
-	if err != nil {
-		return err
+	accounts := [...]*account{
+		&acc.myEmployer,
+		&acc.acmeBank,
+		&acc.aig,
+		&acc.myBankAccount,
+		&acc.loans,
+		&acc.insurances,
+		&acc.houseMortgage,
+		&acc.lifeInsurance,
+		&acc.healthInsurance,
+	}
+	for _, account := range accounts {
+		err = m.populateAccount(account)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *Migrator) populateAccount(account *account) error {
+	var parentID *int = nil
+	if account.Parent != nil {
+		parentID = account.Parent.ID
 	}
 
-	err = m.runMutation(createQuery, map[string]interface{}{"name": "A.C.M.E Bank Inc."}, &acc.acmeBank)
+	requestBody := map[string]interface{}{"name": account.Name, "parentId": parentID}
+	responseBody := struct{ ID int `json:"id"` }{}
+	err := m.sendRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d%s", m.port, "/v1/accounts"), requestBody, &responseBody)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed creating account %+v", account)
 	}
 
-	err = m.runMutation(createQuery, map[string]interface{}{"name": "A.I.G"}, &acc.aig)
-	if err != nil {
-		return err
-	}
-
-	err = m.runMutation(createQuery, map[string]interface{}{"name": "Account @ MyBank"}, &acc.myBankAccount)
-	if err != nil {
-		return err
-	}
-
-	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Loans", "parentId": acc.myBankAccount.Result.ID}, &acc.loansAccount)
-	if err != nil {
-		return err
-	}
-
-	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Insurance", "parentId": acc.myBankAccount.Result.ID}, &acc.insuranceAccount)
-	if err != nil {
-		return err
-	}
-
-	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Life", "parentId": acc.insuranceAccount.Result.ID}, &acc.lifeInsuranceAccount)
-	if err != nil {
-		return err
-	}
-
-	err = m.runMutation(createChildQuery, map[string]interface{}{"name": "Health", "parentId": acc.insuranceAccount.Result.ID}, &acc.healthInsuranceAccount)
-	if err != nil {
-		return err
-	}
-
+	account.ID = &responseBody.ID
 	return nil
 }
 
 func (m *Migrator) populateTransactions() error {
 	var err error
+	var acc = &m.accounts
 
-	query := `mutation(	$origin: String!, 
-						$sourceAccountId: Int!, 
-						$targetAccountId: Int!, 
-						$amount: Float!, 
-						$comments: String) { 
-		createTransaction(	origin: $origin, 
-							sourceAccountId: $sourceAccountId, 
-							targetAccountId: $targetAccountId, 
-							amount: $amount, 
-							comments: $comments) { 
-			id 
-		} 
-	}`
-
-	acc := &m.data.accounts
-
-	err = m.runMutation(query, createTxVarsMap(acc.myEmployer, acc.myBankAccount, 5000, "June salary"), nil)
+	err = m.populateTransaction("Initialization", *acc.myEmployer.ID, *acc.myBankAccount.ID, 5000, "June salary")
 	if err != nil {
 		return err
 	}
 
-	err = m.runMutation(query, createTxVarsMap(acc.loansAccount, acc.acmeBank, 590, "Loan payment"), nil)
+	err = m.populateTransaction("Initialization", *acc.loans.ID, *acc.acmeBank.ID, 590, "Loan payment")
 	if err != nil {
 		return err
 	}
 
-	err = m.runMutation(query, createTxVarsMap(acc.lifeInsuranceAccount, acc.aig, 199, "Life insurance"), nil)
+	err = m.populateTransaction("Initialization", *acc.lifeInsurance.ID, *acc.aig.ID, 199, "Life insurance")
 	if err != nil {
 		return err
 	}
 
-	err = m.runMutation(query, createTxVarsMap(acc.healthInsuranceAccount, acc.aig, 98, "Health insurance"), nil)
+	err = m.populateTransaction("Initialization", *acc.healthInsurance.ID, *acc.aig.ID, 98, "Health insurance")
 	if err != nil {
 		return err
 	}
@@ -205,51 +175,67 @@ func (m *Migrator) populateTransactions() error {
 	return nil
 }
 
-func (m *Migrator) runMutation(query string, variables map[string]interface{}, response interface{}) error {
-	doc, gerr := parser.ParseQuery(&ast.Source{Input: query})
-	if gerr != nil {
-		return errors.Wrapf(gerr, "failed parsing query '%s'", query)
-	}
-
-	errs := validator.Validate(m.schema.Schema(), doc)
-	if len(errs) != 0 {
-		return errors.Wrapf(errs, "failed validating query '%s'", query)
-	}
-
-	op := doc.Operations.ForName("")
-	if op == nil {
-		return errors.Errorf("operation not found")
-	}
-
-	vars, gerr := validator.VariableValues(m.schema.Schema(), op, variables)
-	if gerr != nil {
-		return errors.Wrap(gerr, "failed parsing variables")
-	}
-
-	reqCtx := graphql.NewRequestContext(doc, query, vars)
-	ctx := middleware.EnrichContext(graphql.WithRequestContext(context.Background(), reqCtx), m.db)
-
-	mutation := m.schema.Mutation(ctx, op)
-	if len(mutation.Errors) > 0 {
-		return errors.Wrap(mutation.Errors, "mutation failed")
-	}
-
-	if response != nil {
-		err := json.Unmarshal(mutation.Data, response)
-		if err != nil {
-			return errors.Wrap(err, "failed unmarshalling response")
-		}
-	}
-
-	return nil
-}
-
-func createTxVarsMap(sourceAccountId createAccountResponse, targetAccountId createAccountResponse, amount float64, comments string) map[string]interface{} {
-	return map[string]interface{}{
-		"origin":          "Initialization",
-		"sourceAccountId": sourceAccountId.Result.ID,
-		"targetAccountId": targetAccountId.Result.ID,
+func (m *Migrator) populateTransaction(origin string, sourceAccountId int, targetAccountId int, amount float64, comments string) error {
+	requestBody := map[string]interface{}{
+		"origin":          origin,
+		"sourceAccountId": sourceAccountId,
+		"targetAccountId": targetAccountId,
 		"amount":          amount,
 		"comments":        comments,
 	}
+	responseBody := struct{ ID int `json:"id"` }{}
+	err := m.sendRequest(http.MethodPost, fmt.Sprintf("http://localhost:%d%s", m.port, "/v1/transactions"), requestBody, &responseBody)
+	if err != nil {
+		return errors.Wrapf(err, "failed creating transaction %+v", requestBody)
+	}
+	return nil
+}
+
+func (m *Migrator) sendRequest(method, url string, requestBody interface{}, responseBody interface{}) error {
+	var body io.Reader = nil
+
+	if requestBody != nil {
+		jsonBody, err := json.Marshal(requestBody)
+		if err != nil {
+			return errors.Wrapf(err, "failed marshalling JSON: %+v", requestBody)
+		}
+		body = bytes.NewBuffer(jsonBody)
+	}
+
+	request, err := http.NewRequest(method, url, body)
+	response, err := m.http.Do(request)
+	if err != nil {
+		return errors.Wrapf(err, "failed invoking HTTP request for: %+v", requestBody)
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode >= http.StatusBadRequest {
+		return errors.Wrapf(err, "received HTTP status code %d for: ", response.StatusCode, requestBody)
+	}
+
+	location, err := response.Location()
+	if err != nil {
+		if err == http.ErrNoLocation {
+			location = nil
+		} else {
+			return errors.Wrapf(err, "failed extracting 'Location' header from response")
+		}
+	}
+
+	if location != nil {
+		return m.sendRequest(http.MethodGet, location.String(), nil, responseBody)
+	}
+
+	responseBodyBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return errors.Wrapf(err, "failed reading response body: %+v", requestBody)
+	}
+
+	if len(responseBodyBytes) > 0 {
+		err = json.Unmarshal(responseBodyBytes, responseBody)
+		if err != nil {
+			return errors.Wrapf(err, "failed unmarshalling response body: %+v", string(responseBodyBytes))
+		}
+	}
+	return nil
 }
