@@ -162,6 +162,11 @@ func (m *Migrator) populateTransactions() error {
 		return err
 	}
 
+	err = m.populateTransaction("Initialization", *acc.houseMortgage.ID, *acc.acmeBank.ID, 410, "Mortgage loan payment")
+	if err != nil {
+		return err
+	}
+
 	err = m.populateTransaction("Initialization", *acc.lifeInsurance.ID, *acc.aig.ID, 199, "Life insurance")
 	if err != nil {
 		return err
