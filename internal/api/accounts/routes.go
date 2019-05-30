@@ -37,7 +37,8 @@ func (a *Accounts) getRootAccounts(w http.ResponseWriter, r *http.Request) {
        		cte.name                                                                                        AS name,
         	COALESCE((SELECT COUNT(*) FROM bb.accounts AS children WHERE children.parent_id = cte.id), 0)   AS child_count,
         	COALESCE(SUM(outgoing_tx.amount), 0)                                                            AS outgoing,
-        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming
+        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming,
+        	COALESCE(SUM(incoming_tx.amount), 0) - COALESCE(SUM(outgoing_tx.amount), 0)                     AS balance
 		FROM cte
          	LEFT JOIN bb.transactions AS outgoing_tx ON outgoing_tx.source_account_id = cte.child_id
          	LEFT JOIN bb.transactions AS incoming_tx ON incoming_tx.target_account_id = cte.child_id
@@ -56,11 +57,10 @@ func (a *Accounts) getRootAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts := make([]Account, 0, 100)
 	for rows.Next() {
 		var acc Account
-		err := rows.Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming)
+		err := rows.Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming, &acc.Balance)
 		if err != nil {
 			panic(errors.Wrap(err, "failed scanning account"))
 		}
-		acc.Balance = acc.Incoming - acc.Outgoing
 		accounts = append(accounts, acc)
 	}
 	if err := rows.Err(); err != nil {
@@ -89,7 +89,8 @@ func (a *Accounts) getChildAccounts(w http.ResponseWriter, r *http.Request) {
        		cte.name                                                                                        AS name,
         	COALESCE((SELECT COUNT(*) FROM bb.accounts AS children WHERE children.parent_id = cte.id), 0)   AS child_count,
         	COALESCE(SUM(outgoing_tx.amount), 0)                                                            AS outgoing,
-        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming
+        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming,
+        	COALESCE(SUM(incoming_tx.amount), 0) - COALESCE(SUM(outgoing_tx.amount), 0)                     AS balance
 		FROM cte
          	LEFT JOIN bb.transactions AS outgoing_tx ON outgoing_tx.source_account_id = cte.child_id
          	LEFT JOIN bb.transactions AS incoming_tx ON incoming_tx.target_account_id = cte.child_id
@@ -108,11 +109,10 @@ func (a *Accounts) getChildAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts := make([]Account, 0, 100)
 	for rows.Next() {
 		var acc Account
-		err := rows.Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming)
+		err := rows.Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming, &acc.Balance)
 		if err != nil {
 			panic(errors.Wrap(err, "failed scanning account"))
 		}
-		acc.Balance = acc.Incoming - acc.Outgoing
 		accounts = append(accounts, acc)
 	}
 	if err := rows.Err(); err != nil {
@@ -140,7 +140,8 @@ func (a *Accounts) getAccount(w http.ResponseWriter, r *http.Request) {
        		cte.name                                                                                        AS name,
         	COALESCE((SELECT COUNT(*) FROM bb.accounts AS children WHERE children.parent_id = cte.id), 0)   AS child_count,
         	COALESCE(SUM(outgoing_tx.amount), 0)                                                            AS outgoing,
-        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming
+        	COALESCE(SUM(incoming_tx.amount), 0)                                                            AS incoming,
+        	COALESCE(SUM(incoming_tx.amount), 0) - COALESCE(SUM(outgoing_tx.amount), 0)                     AS balance
 		FROM cte
          	LEFT JOIN bb.transactions AS outgoing_tx ON outgoing_tx.source_account_id = cte.child_id
          	LEFT JOIN bb.transactions AS incoming_tx ON incoming_tx.target_account_id = cte.child_id
@@ -150,11 +151,10 @@ func (a *Accounts) getAccount(w http.ResponseWriter, r *http.Request) {
 	        cte.updated_on,
 	        cte.name`
 	var acc Account
-	err := a.db.QueryRowContext(r.Context(), _sql, ID).Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming)
+	err := a.db.QueryRowContext(r.Context(), _sql, ID).Scan(&acc.ID, &acc.CreatedOn, &acc.UpdatedOn, &acc.Name, &acc.ChildCount, &acc.Outgoing, &acc.Incoming, &acc.Balance)
 	if err != nil {
 		panic(errors.Wrap(err, "failed scanning account"))
 	}
-	acc.Balance = acc.Incoming - acc.Outgoing
 
 	util.Respond(w, r, http.StatusOK, acc)
 }
