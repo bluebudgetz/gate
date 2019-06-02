@@ -11,7 +11,7 @@ import (
 )
 
 type Accounts struct {
-	db *sql.DB
+	db   *sql.DB
 	port int
 }
 
@@ -186,11 +186,80 @@ func (a *Accounts) createAccount(w http.ResponseWriter, r *http.Request) {
 	util.Respond(w, r, http.StatusCreated, nil)
 }
 
+func (a *Accounts) putAccount(w http.ResponseWriter, r *http.Request) {
+	ID := chi.URLParam(r, "id")
+
+	account := struct {
+		Name     string `json:"name"`
+		ParentID *int   `json:"parentId"`
+	}{}
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		util.Respond(w, r, http.StatusBadRequest, nil)
+		return
+	}
+
+	_sql := `
+		UPDATE bb.accounts 
+		SET name = $2, parent_id = $3
+		WHERE id = $1
+	`
+	result, err := a.db.ExecContext(r.Context(), _sql, ID, account.Name, account.ParentID)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed updating account '%s'", account.Name))
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		panic(errors.Wrapf(err, "failed fetching number of affected rows"))
+	} else if rowsAffected <= 0 {
+		panic(errors.Wrapf(err, "could not find any account with ID '%d'", ID))
+	}
+
+	util.Respond(w, r, http.StatusNoContent, nil)
+}
+
+func (a *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
+	ID := chi.URLParam(r, "id")
+
+	_selectSql := `SELECT name, parent_id FROM bb.accounts WHERE id = $1`
+	var name string
+	var parentId *int
+	if err := a.db.QueryRowContext(r.Context(), _selectSql, ID).Scan(&name, &parentId); err != nil {
+		panic(errors.Wrapf(err, "failed fetching current values of account '%d'", ID))
+	}
+
+	account := struct {
+		Name     *string `json:"name"`
+		ParentID *int    `json:"parentId"`
+	}{Name: &name, ParentID: parentId}
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		util.Respond(w, r, http.StatusBadRequest, nil)
+		return
+	}
+
+	_sql := `UPDATE bb.accounts SET name = $2, parent_id = $3 WHERE id = $1`
+	result, err := a.db.ExecContext(r.Context(), _sql, ID, account.Name, account.ParentID)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed patching account '%s'", account.Name))
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		panic(errors.Wrapf(err, "failed fetching number of affected rows"))
+	} else if rowsAffected <= 0 {
+		panic(errors.Wrapf(err, "could not find any account with ID '%d'", ID))
+	}
+
+	util.Respond(w, r, http.StatusNoContent, nil)
+}
+
 func (a *Accounts) RoutesV1() *chi.Mux {
 	router := chi.NewRouter()
 	router.Get("/", a.getRootAccounts)
 	router.Post("/", a.createAccount)
 	router.Get("/{id}", a.getAccount)
+	router.Put("/{id}", a.putAccount)
+	router.Patch("/{id}", a.patchAccount)
 	router.Get("/{id}/children", a.getChildAccounts)
 	return router
 }
