@@ -253,6 +253,27 @@ func (a *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
 	util.Respond(w, r, http.StatusNoContent, nil)
 }
 
+func (a *Accounts) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	ID := chi.URLParam(r, "id")
+
+	_sql := `DELETE FROM bb.accounts WHERE id = $1`
+	result, err := a.db.ExecContext(r.Context(), _sql, ID)
+	if err != nil {
+		panic(errors.Wrapf(err, "failed deleting account '%s'", ID))
+	}
+
+	// TODO: detect error due to foreign key constraint, and error out accordingg to the constraint that was violated
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		panic(errors.Wrapf(err, "failed fetching number of affected rows"))
+	} else if rowsAffected <= 0 {
+		panic(errors.Wrapf(err, "could not find any account %d", ID))
+	}
+
+	util.Respond(w, r, http.StatusNoContent, nil)
+}
+
 func (a *Accounts) RoutesV1() *chi.Mux {
 	router := chi.NewRouter()
 	router.Get("/", a.getRootAccounts)
@@ -260,6 +281,7 @@ func (a *Accounts) RoutesV1() *chi.Mux {
 	router.Get("/{id}", a.getAccount)
 	router.Put("/{id}", a.putAccount)
 	router.Patch("/{id}", a.patchAccount)
+	router.Delete("/{id}", a.deleteAccount)
 	router.Get("/{id}/children", a.getChildAccounts)
 	return router
 }
