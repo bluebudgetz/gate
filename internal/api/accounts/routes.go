@@ -256,6 +256,23 @@ func (a *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
 func (a *Accounts) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	ID := chi.URLParam(r, "id")
 
+	_balanceSQL := `
+		SELECT (SELECT COUNT(*) FROM bb.transactions AS tx WHERE source_account_id = $1) AS outgoing_amount,
+		       (SELECT COUNT(*) FROM bb.transactions AS tx WHERE target_account_id = $1) AS incoming_amount
+		FROM bb.accounts AS a
+		WHERE a.id = $1`
+	var outgoingCount, incomingCount *int
+	if err := a.db.QueryRowContext(r.Context(), _balanceSQL, ID).Scan(&outgoingCount, &incomingCount); err != nil {
+		panic(errors.Wrapf(err, "failed fetching current balance of account '%d'", ID))
+	}
+
+	// TODO: implement a unified way to return error messages back to the client
+
+	if *outgoingCount > 0 || *incomingCount > 0 {
+		util.Respond(w, r, http.StatusMethodNotAllowed, nil);
+		return
+	}
+
 	_sql := `DELETE FROM bb.accounts WHERE id = $1`
 	result, err := a.db.ExecContext(r.Context(), _sql, ID)
 	if err != nil {
