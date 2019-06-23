@@ -40,7 +40,7 @@ var healthInsurance = db.accounts.insertOne(Object.assign({}, a, {
 })).insertedId;
 
 // TRANSACTIONS
-var t = {origin: "Initialization", createdOn: d, updatedOn: null};
+var t = {origin: "Initialization", createdOn: d, issuedOn: d, updatedOn: null};
 db.transactions.insert([
     Object.assign({}, t, {source: company, target: bankAccount, amount: 4990, comment: "April Salary"}),
     Object.assign({}, t, {source: company, target: bankAccount, amount: 5000, comment: "May Salary"}),
