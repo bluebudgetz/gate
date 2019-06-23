@@ -35,7 +35,10 @@ func (module *Module) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Account could not be found.", http.StatusNotFound)
 		return
 	} else if result.DeletedCount > 1 {
-		log.Warn().Str("id", ID.Hex()).Msgf("%d MongoDB documents deleted for a single ID")
+		log.Warn().
+			Str("id", ID.Hex()).
+			Int64("count", result.DeletedCount).
+			Msgf("%d MongoDB accounts deleted for a single ID")
 	}
 
 	w.WriteHeader(http.StatusNoContent)
