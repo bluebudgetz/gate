@@ -42,12 +42,12 @@ var healthInsurance = db.accounts.insertOne(Object.assign({}, a, {
 // TRANSACTIONS
 var t = {origin: "Initialization", createdOn: d, issuedOn: d, updatedOn: null};
 db.transactions.insert([
-    Object.assign({}, t, {source: company, target: bankAccount, amount: 4990, comment: "April Salary"}),
-    Object.assign({}, t, {source: company, target: bankAccount, amount: 5000, comment: "May Salary"}),
-    Object.assign({}, t, {source: carLoan, target: acmeBank, amount: 590, comment: "April car loan"}),
-    Object.assign({}, t, {source: carLoan, target: acmeBank, amount: 589, comment: "May car loan"}),
-    Object.assign({}, t, {source: homeMortgage, target: acmeBank, amount: 410, comment: "February home mortgage"}),
-    Object.assign({}, t, {source: officeMortgage, target: acmeBank, amount: 890, comment: "June office mortgage"}),
-    Object.assign({}, t, {source: lifeInsurance, target: aig, amount: 199, comment: "March life insurance"}),
-    Object.assign({}, t, {source: healthInsurance, target: aig, amount: 98, comment: "January health insurance"})
+    Object.assign({}, t, {source: company, target: bankAccount, amount: 4990, comments: "April Salary"}),
+    Object.assign({}, t, {source: company, target: bankAccount, amount: 5000, comments: "May Salary"}),
+    Object.assign({}, t, {source: carLoan, target: acmeBank, amount: 590, comments: "April car loan"}),
+    Object.assign({}, t, {source: carLoan, target: acmeBank, amount: 589, comments: "May car loan"}),
+    Object.assign({}, t, {source: homeMortgage, target: acmeBank, amount: 410, comments: "February home mortgage"}),
+    Object.assign({}, t, {source: officeMortgage, target: acmeBank, amount: 890, comments: "June office mortgage"}),
+    Object.assign({}, t, {source: lifeInsurance, target: aig, amount: 199, comments: "March life insurance"}),
+    Object.assign({}, t, {source: healthInsurance, target: aig, amount: 98, comments: "January health insurance"})
 ]);
