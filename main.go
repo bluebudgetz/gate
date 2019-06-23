@@ -5,6 +5,7 @@ import (
 	chiprometheus "github.com/766b/chi-prometheus"
 	"github.com/bluebudgetz/gate/internal/accounts"
 	"github.com/bluebudgetz/gate/internal/schema"
+	"github.com/bluebudgetz/gate/internal/transactions"
 	"github.com/bluebudgetz/gate/internal/util"
 	mongoutil "github.com/bluebudgetz/gate/internal/util/mongo"
 	"github.com/go-chi/chi"
@@ -140,6 +141,7 @@ func main() {
 		router.Use(corsInstance.Handler)
 	}
 	router.Route("/v1/accounts", accounts.New(config, schemaRegistry, mongoClient).RoutesV1)
+	router.Route("/v1/transactions", transactions.New(config, schemaRegistry, mongoClient).RoutesV1)
 
 	// Start an HTTP server that only provides "/metrics" on a different port
 	// This port SHOULD NOT be exposed externally

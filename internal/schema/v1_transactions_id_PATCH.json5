@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Transaction",
+  "type": "object",
+  "properties": {
+    "issuedOn": {
+      "type": "string"
+    },
+    "origin": {
+      "type": "string"
+    },
+    "sourceAccountId": {
+      "type": "string"
+    },
+    "targetAccountId": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "comments": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
