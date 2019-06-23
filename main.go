@@ -23,41 +23,32 @@ import (
 )
 
 func main() {
-	config := util.Config{
-		Environment: util.EnvDevelopment,
-		HTTP: util.HTTP{
-			Port: 3001,
-			CORS: util.CORS{
-				Host: "www.bluebudgetz.com",
-				Port: 80,
-			},
-		},
-		LogLevel: "debug",
-		Metrics: util.Metrics{
-			Port: 3002,
-		},
-		Database: util.Database{
-			MongoDB: util.MongoDB{
-				URI: "mongodb://localhost:27017",
-			},
-		},
-	}
+	config := util.Config{}
 
 	// Use Viper for configuration
 	v := viper.New()
+	v.SetDefault("environment", util.EnvDevelopment)
+	v.SetDefault("http.port", 3001)
+	v.SetDefault("http.cors.host", "www.bluebudgetz.com")
+	v.SetDefault("http.cors.port", 80)
+	v.SetDefault("loglevel", "info")
+	v.SetDefault("metrics.port", 3002)
+	v.SetDefault("database.mongodb.uri", "mongodb://localhost:27017")
 	v.SetConfigName("gate")
 	v.AddConfigPath(".")
 	v.AddConfigPath("/etc/gate/")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.SetEnvPrefix("GATE")
 	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.SetEnvPrefix("APP")
 	if err := v.Unmarshal(&config); err != nil {
 		log.Fatal().Err(err).Msg("Failed configuring application.")
 	}
 
 	// Configuration validations
 	if config.Environment != util.EnvProduction && config.Environment != util.EnvDevelopment {
-		log.Fatal().Msgf("environment must be either '%s' or '%s'", util.EnvProduction, util.EnvDevelopment)
+		log.Fatal().
+			Interface("env", os.Environ()).
+			Msgf("environment must be either '%s' or '%s'", util.EnvProduction, util.EnvDevelopment)
 	}
 
 	// Logging level
@@ -95,6 +86,14 @@ func main() {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 
+	// Print configuration
+	log.Info().
+		Interface("args", os.Args).
+		Interface("env", os.Environ()).
+		Interface("config", config).
+		Interface("keys", v.AllKeys()).
+		Msg("Configured")
+
 	// Prepare MongoDB client
 	mongoClient, err := mongoutil.CreateMongoClient(config.Database.MongoDB.URI)
 	if err != nil {
@@ -120,20 +119,25 @@ func main() {
 		chiprometheus.NewMiddleware("serviceName", 50, 200, 500, 1000, 2000, 5000, 10000, 30000),
 		middleware.GetHead,
 		middleware.NoCache,
-		middleware.AllowContentType("application/json", ""),
 		middleware.ContentCharset("", "UTF-8"),
+		middleware.AllowContentType("application/json"),
+		middleware.SetHeader("Content-Type", "application/json; charset=UTF-8"),
 	)
 	if config.HTTP.CORS.Host != "" && config.HTTP.CORS.Port != 0 {
 		corsHost := config.HTTP.CORS.Host
 		corsPort := config.HTTP.CORS.Port
-		router.Use(cors.New(cors.Options{
+		corsInstance := cors.New(cors.Options{
 			AllowedOrigins:   []string{"http://" + corsHost + ":" + strconv.Itoa(corsPort), "https://" + corsHost + ":" + strconv.Itoa(corsPort)},
 			AllowedMethods:   []string{"OPTIONS", "HEAD", "GET", "POST", "PATCH", "PUT", "DELETE"},
 			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 			ExposedHeaders:   []string{"Link"},
 			AllowCredentials: true,
 			MaxAge:           300,
-		}).Handler)
+		})
+		if log.Debug().Enabled() {
+			corsInstance.Log = stdlog.New(log.Logger.With().Str("module", "cors").Logger(), "", 0)
+		}
+		router.Use(corsInstance.Handler)
 	}
 	router.Route("/v1/accounts", accounts.New(config, schemaRegistry, mongoClient).RoutesV1)
 
@@ -142,6 +146,7 @@ func main() {
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.Handler())
 	metricsHttpServer := &http.Server{Addr: fmt.Sprintf(":%d", config.Metrics.Port), Handler: metricsMux}
+	log.Info().Msgf("Starting metrics server on port %d", config.Metrics.Port)
 	go func() {
 		if err := metricsHttpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("Metrics HTTP server failed")
@@ -150,6 +155,7 @@ func main() {
 
 	// Start the application HTTP server, and wait until it exits
 	server := &http.Server{Addr: ":" + strconv.Itoa(config.HTTP.Port), Handler: router}
+	log.Info().Msgf("Starting API server on port %d", config.HTTP.Port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("HTTP server exited with an error")
 	} else {
