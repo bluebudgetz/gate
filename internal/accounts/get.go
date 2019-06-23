@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-func (acc *Accounts) getAccountsList(w http.ResponseWriter, r *http.Request) {
+func (module *Module) getAccountsList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	cur, err := acc.mongo.Database("bluebudgetz").Collection("accounts").Find(ctx, bson.M{})
+	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Find(ctx, bson.M{})
 	if err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Failed fetching accounts from MongoDB")
@@ -43,7 +43,7 @@ func (acc *Accounts) getAccountsList(w http.ResponseWriter, r *http.Request) {
 	// Write response back to client
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
-	if acc.config.Environment != util.EnvProduction {
+	if module.config.Environment != util.EnvProduction {
 		encoder.SetIndent("", "  ")
 	}
 	w.WriteHeader(http.StatusOK)
@@ -53,7 +53,7 @@ func (acc *Accounts) getAccountsList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (acc *Accounts) getAccountsTree(w http.ResponseWriter, r *http.Request) {
+func (module *Module) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 	type AccountTreeDTO struct {
 		ID        *primitive.ObjectID `json:"id,omitempty"`
 		CreatedOn *time.Time          `json:"createdOn,omitempty"`
@@ -62,7 +62,7 @@ func (acc *Accounts) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 		Children  *[]*AccountTreeDTO  `json:"children,omitempty"`
 	}
 
-	cur, err := acc.mongo.Database("bluebudgetz").Collection("accounts").Find(r.Context(), bson.M{})
+	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Find(r.Context(), bson.M{})
 	if err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Failed fetching accounts from MongoDB")
@@ -113,7 +113,7 @@ func (acc *Accounts) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 	// Write response back to client
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
-	if acc.config.Environment != util.EnvProduction {
+	if module.config.Environment != util.EnvProduction {
 		encoder.SetIndent("", "  ")
 	}
 	w.WriteHeader(http.StatusOK)
@@ -123,14 +123,14 @@ func (acc *Accounts) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (acc *Accounts) getAccount(w http.ResponseWriter, r *http.Request) {
+func (module *Module) getAccount(w http.ResponseWriter, r *http.Request) {
 	ID := mongoutil.ObjectIdFromNillableString(chi.URLParam(r, "id"))
 	if ID == nil {
 		http.Error(w, "", http.StatusNotFound)
 		return
 	}
 
-	result := acc.mongo.Database("bluebudgetz").Collection("accounts").FindOne(r.Context(), bson.M{"_id": ID})
+	result := module.mongo.Database("bluebudgetz").Collection("accounts").FindOne(r.Context(), bson.M{"_id": ID})
 	if result.Err() != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(result.Err()).Str("id", ID.Hex()).Msg("Failed fetching account from MongoDB")
@@ -152,7 +152,7 @@ func (acc *Accounts) getAccount(w http.ResponseWriter, r *http.Request) {
 	// Write response back to client
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
-	if acc.config.Environment != util.EnvProduction {
+	if module.config.Environment != util.EnvProduction {
 		encoder.SetIndent("", "  ")
 	}
 	w.WriteHeader(http.StatusOK)

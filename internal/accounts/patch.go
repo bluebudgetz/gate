@@ -14,7 +14,7 @@ import (
 	"net/http"
 )
 
-func (acc *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
+func (module *Module) patchAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get ID from URL path
@@ -35,7 +35,7 @@ func (acc *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
 
 	// Validate JSON payload
 	var validationErrors []jsonschema.ValError = nil
-	acc.jsonSchemaRegistry.V1.Accounts.PATCH.Validate("/", body, &validationErrors)
+	module.jsonSchemaRegistry.V1.Accounts.PATCH.Validate("/", body, &validationErrors)
 	if len(validationErrors) > 0 {
 		http.Error(w, fmt.Sprintf("%s (%s)", validationErrors[0].Message, validationErrors[0].PropertyPath), http.StatusBadRequest)
 		return
@@ -53,7 +53,7 @@ func (acc *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
 	// Update
 	upsert := false
 	returnDocument := options.After
-	result := acc.mongo.Database("bluebudgetz").Collection("accounts").FindOneAndUpdate(ctx, &bson.M{"_id": ID}, &bson.M{
+	result := module.mongo.Database("bluebudgetz").Collection("accounts").FindOneAndUpdate(ctx, &bson.M{"_id": ID}, &bson.M{
 		"$currentDate": &bson.M{
 			"updatedOn": true,
 		},
@@ -78,7 +78,7 @@ func (acc *Accounts) patchAccount(w http.ResponseWriter, r *http.Request) {
 	// Write response back to client
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
-	if acc.config.Environment != util.EnvProduction {
+	if module.config.Environment != util.EnvProduction {
 		encoder.SetIndent("", "  ")
 	}
 	w.WriteHeader(http.StatusOK)

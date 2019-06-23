@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func (acc *Accounts) addAccount(w http.ResponseWriter, r *http.Request) {
+func (module *Module) addAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Decode new account from body
@@ -25,7 +25,7 @@ func (acc *Accounts) addAccount(w http.ResponseWriter, r *http.Request) {
 
 	// Validate JSON payload
 	var validationErrors []jsonschema.ValError = nil
-	acc.jsonSchemaRegistry.V1.Accounts.POST.Validate("/", body, &validationErrors)
+	module.jsonSchemaRegistry.V1.Accounts.POST.Validate("/", body, &validationErrors)
 	if len(validationErrors) > 0 {
 		http.Error(w, fmt.Sprintf("%s (%s)", validationErrors[0].Message, validationErrors[0].PropertyPath), http.StatusBadRequest)
 		return
@@ -41,7 +41,7 @@ func (acc *Accounts) addAccount(w http.ResponseWriter, r *http.Request) {
 	if log.Debug().Enabled() {
 		log.Debug().Interface("body", body).Interface("account", post).Msg("Creating account")
 	}
-	result, err := acc.mongo.Database("bluebudgetz").Collection("accounts").InsertOne(ctx, &post)
+	result, err := module.mongo.Database("bluebudgetz").Collection("accounts").InsertOne(ctx, &post)
 	if err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Failed creating account")

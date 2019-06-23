@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func (acc *Accounts) deleteAccount(w http.ResponseWriter, r *http.Request) {
+func (module *Module) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Get ID from URL path
@@ -21,14 +21,14 @@ func (acc *Accounts) deleteAccount(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: verify account is not used in any transactions (return http.StatusMethodNotAllowed in this case)
 
-	result, err := acc.mongo.Database("bluebudgetz").Collection("accounts").DeleteOne(ctx, &bson.M{"_id": ID})
+	result, err := module.mongo.Database("bluebudgetz").Collection("accounts").DeleteOne(ctx, &bson.M{"_id": ID})
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			http.Error(w, "Account could not be found.", http.StatusNotFound)
 			return
 		} else {
 			http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
-			log.Error().Err(err).Str("id", ID.Hex()).Msg("Failed fetching patched account from MongoDB")
+			log.Error().Err(err).Str("id", ID.Hex()).Msg("Failed deleting account from MongoDB")
 			return
 		}
 	} else if result.DeletedCount < 1 {

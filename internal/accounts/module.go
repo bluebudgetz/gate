@@ -17,25 +17,25 @@ type AccountDocument struct {
 	ParentID  *primitive.ObjectID `bson:"parentId"`
 }
 
-type Accounts struct {
+type Module struct {
 	config             util.Config
 	jsonSchemaRegistry *schema.Registry
 	mongo              *mongo.Client
 }
 
-func New(config util.Config, jsonSchemaRegistry *schema.Registry, mongo *mongo.Client) *Accounts {
-	return &Accounts{config, jsonSchemaRegistry, mongo}
+func New(config util.Config, jsonSchemaRegistry *schema.Registry, mongo *mongo.Client) *Module {
+	return &Module{config, jsonSchemaRegistry, mongo}
 }
 
-func (acc *Accounts) RoutesV1(router chi.Router) {
+func (module *Module) RoutesV1(router chi.Router) {
 	// Root
-	router.Get("/", acc.getAccountsList)
-	router.Post("/", acc.addAccount)
-	router.Get("/tree", acc.getAccountsTree)
+	router.Get("/", module.getAccountsList)
+	router.Post("/", module.addAccount)
+	router.Get("/tree", module.getAccountsTree)
 
 	// Single account
-	router.Delete("/{id}", acc.deleteAccount)
-	router.Get("/{id}", acc.getAccount)
-	router.Patch("/{id}", acc.patchAccount)
-	router.Put("/{id}", acc.putAccount)
+	router.Delete("/{id}", module.deleteAccount)
+	router.Get("/{id}", module.getAccount)
+	router.Patch("/{id}", module.patchAccount)
+	router.Put("/{id}", module.putAccount)
 }
