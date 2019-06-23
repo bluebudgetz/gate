@@ -24,7 +24,7 @@ func (module *Module) getAccountsList(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cur.Close(ctx)
 
-	accountList := make([]AccountDocument, 0)
+	list := make([]AccountDocument, 0)
 	for cur.Next(ctx) {
 		var doc AccountDocument
 		if err := cur.Decode(&doc); err != nil {
@@ -32,7 +32,7 @@ func (module *Module) getAccountsList(w http.ResponseWriter, r *http.Request) {
 			log.Error().Err(err).Msg("Failed decoding accounts from MongoDB")
 			return
 		}
-		accountList = append(accountList, doc)
+		list = append(list, doc)
 	}
 	if err := cur.Err(); err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
@@ -47,7 +47,7 @@ func (module *Module) getAccountsList(w http.ResponseWriter, r *http.Request) {
 		encoder.SetIndent("", "  ")
 	}
 	w.WriteHeader(http.StatusOK)
-	if err := encoder.Encode(accountList); err != nil {
+	if err := encoder.Encode(list); err != nil {
 		log.Error().Err(err).Msg("Failed encoding accounts to client")
 		return
 	}
