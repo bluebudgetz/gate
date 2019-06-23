@@ -10,11 +10,11 @@ import (
 )
 
 type AccountDocument struct {
-	ID        *primitive.ObjectID `bson:"_id"`
-	CreatedOn *time.Time          `bson:"createdOn"`
-	UpdatedOn *time.Time          `bson:"updatedOn"`
-	Name      *string             `bson:"name"`
-	ParentID  *primitive.ObjectID `bson:"parentId"`
+	ID        *primitive.ObjectID `bson:"_id" json:"id,omitempty"`
+	CreatedOn *time.Time          `bson:"createdOn" json:"createdOn,omitempty"`
+	UpdatedOn *time.Time          `bson:"updatedOn" json:"updatedOn,omitempty"`
+	Name      *string             `bson:"name" json:"name,omitempty"`
+	ParentID  *primitive.ObjectID `bson:"parentId" json:"parentId,omitempty"`
 }
 
 type Module struct {
