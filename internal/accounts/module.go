@@ -1,5 +1,7 @@
 package accounts
 
+//go:generate go-bindata -o ./assets.go -ignore ".*\\.go" -pkg accounts ./...
+
 import (
 	"github.com/bluebudgetz/gate/internal/schema"
 	"github.com/bluebudgetz/gate/internal/util"
@@ -15,6 +17,9 @@ type AccountDocument struct {
 	UpdatedOn *time.Time          `bson:"updatedOn" json:"updatedOn,omitempty"`
 	Name      *string             `bson:"name" json:"name,omitempty"`
 	ParentID  *primitive.ObjectID `bson:"parentId" json:"parentId,omitempty"`
+	Incoming  *float64            `bson:"incoming" json:"incoming,omitempty"`
+	Outgoing  *float64            `bson:"outgoing" json:"outgoing,omitempty"`
+	Balance   *float64            `bson:"balance" json:"balance,omitempty"`
 }
 
 type Module struct {
@@ -32,6 +37,7 @@ func (module *Module) RoutesV1(router chi.Router) {
 	router.Get("/", module.getAccountsList)
 	router.Post("/", module.addAccount)
 	router.Get("/tree", module.getAccountsTree)
+	router.Get("/balance", module.getAccountsBalance)
 
 	// Single account
 	router.Delete("/{id}", module.deleteAccount)
