@@ -38,7 +38,7 @@ func (module *Module) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		log.Warn().
 			Str("id", ID.Hex()).
 			Int64("count", result.DeletedCount).
-			Msgf("%d MongoDB accounts deleted for a single ID")
+			Msgf("Too many MongoDB accounts deleted for a single ID")
 	}
 
 	w.WriteHeader(http.StatusNoContent)
