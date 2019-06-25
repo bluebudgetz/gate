@@ -37,7 +37,6 @@ func (module *Module) RoutesV1(router chi.Router) {
 	router.Get("/", module.getAccountsList)
 	router.Post("/", module.addAccount)
 	router.Get("/tree", module.getAccountsTree)
-	router.Get("/balance", module.getAccountsBalance)
 
 	// Single account
 	router.Delete("/{id}", module.deleteAccount)

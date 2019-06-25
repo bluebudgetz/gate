@@ -13,10 +13,18 @@ import (
 	"time"
 )
 
+var accountsQueryDoc bson.A
+
+func init() {
+	if err := json.Unmarshal(MustAsset("mongodb-balance-query.json"), &accountsQueryDoc); err != nil {
+		log.Fatal().Err(err).Msgf("Failed loading MongoDB query '%s'", "mongodb-balance-query.json")
+	}
+}
+
 func (module *Module) getAccountsList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Find(ctx, bson.M{})
+	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Aggregate(ctx, accountsQueryDoc)
 	if err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Failed fetching accounts from MongoDB")
@@ -60,9 +68,12 @@ func (module *Module) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 		UpdatedOn *time.Time          `json:"updatedOn,omitempty"`
 		Name      *string             `json:"name,omitempty"`
 		Children  *[]*AccountTreeDTO  `json:"children,omitempty"`
+		Incoming  *float64            `json:"incoming,omitempty"`
+		Outgoing  *float64            `json:"outgoing,omitempty"`
+		Balance   *float64            `json:"balance,omitempty"`
 	}
 
-	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Find(r.Context(), bson.M{})
+	cur, err := module.mongo.Database("bluebudgetz").Collection("accounts").Aggregate(r.Context(), accountsQueryDoc)
 	if err != nil {
 		http.Error(w, "Internal error occurred.", http.StatusInternalServerError)
 		log.Error().Err(err).Msg("Failed fetching accounts from MongoDB")
@@ -89,6 +100,9 @@ func (module *Module) getAccountsTree(w http.ResponseWriter, r *http.Request) {
 			UpdatedOn: account.UpdatedOn,
 			Name:      account.Name,
 			Children:  &children,
+			Incoming:  account.Incoming,
+			Outgoing:  account.Outgoing,
+			Balance:   account.Balance,
 		}
 		if account.ParentID != nil {
 			parents[account.ID.Hex()] = account.ParentID.Hex()
