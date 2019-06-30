@@ -1,13 +1,21 @@
 package util
 
+import "time"
+
 type CORS struct {
 	Host string
 	Port int
 }
 
+type JWT struct {
+	Key         string
+	ExpDuration time.Duration
+}
+
 type HTTP struct {
 	Port int
 	CORS CORS
+	JWT  JWT
 }
 
 type Metrics struct {

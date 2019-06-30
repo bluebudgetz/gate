@@ -4,8 +4,10 @@ go 1.12
 
 require (
 	github.com/766b/chi-prometheus v0.0.0-20180509160047-46ac2b31aa30
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/qri-io/jsonschema v0.1.1

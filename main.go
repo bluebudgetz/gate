@@ -4,12 +4,14 @@ import (
 	"fmt"
 	chiprometheus "github.com/766b/chi-prometheus"
 	"github.com/bluebudgetz/gate/internal/accounts"
+	"github.com/bluebudgetz/gate/internal/auth"
 	"github.com/bluebudgetz/gate/internal/schema"
 	"github.com/bluebudgetz/gate/internal/transactions"
 	"github.com/bluebudgetz/gate/internal/util"
 	mongoutil "github.com/bluebudgetz/gate/internal/util/mongo"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog"
@@ -32,6 +34,8 @@ func main() {
 	v.SetDefault("http.port", 3001)
 	v.SetDefault("http.cors.host", "www.bluebudgetz.com")
 	v.SetDefault("http.cors.port", 80)
+	v.SetDefault("http.jwt.key", uuid.Must(uuid.NewRandom()).String())
+	v.SetDefault("http.jwt.expduration", 24*time.Hour*14)
 	v.SetDefault("loglevel", "info")
 	v.SetDefault("metrics.port", 3002)
 	v.SetDefault("database.mongodb.uri", "mongodb://localhost:27017")
@@ -107,6 +111,11 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed creating JSON schema registry.")
 	}
 
+	// Modules
+	authModule := auth.New(config.HTTP.JWT.Key, config, schemaRegistry, mongoClient)
+	accountsModule := accounts.New(config, schemaRegistry, mongoClient)
+	transactionsModule := transactions.New(config, schemaRegistry, mongoClient)
+
 	// Create router
 	router := chi.NewRouter()
 	router.Use(
@@ -121,8 +130,12 @@ func main() {
 		middleware.GetHead,
 		middleware.NoCache,
 		middleware.ContentCharset("", "UTF-8"),
-		middleware.AllowContentType("application/json"),
+		middleware.AllowContentType("application/json", "application/x-www-form-urlencoded"),
 		middleware.SetHeader("Content-Type", "application/json; charset=UTF-8"),
+
+		// Currently, only POST is allowed to this path (/v1/auth/tokens) so this method of ignored paths works
+		// If, however, more HTTP methods will be supported for it, then they will not be protected by this method!
+		authModule.Authenticate("/v1/auth/tokens"),
 	)
 	if config.HTTP.CORS.Host != "" && config.HTTP.CORS.Port != 0 {
 		corsHost := config.HTTP.CORS.Host
@@ -140,8 +153,9 @@ func main() {
 		}
 		router.Use(corsInstance.Handler)
 	}
-	router.Route("/v1/accounts", accounts.New(config, schemaRegistry, mongoClient).RoutesV1)
-	router.Route("/v1/transactions", transactions.New(config, schemaRegistry, mongoClient).RoutesV1)
+	router.Route("/v1/auth", authModule.RoutesV1)
+	router.Route("/v1/accounts", accountsModule.RoutesV1)
+	router.Route("/v1/transactions", transactionsModule.RoutesV1)
 
 	// Start an HTTP server that only provides "/metrics" on a different port
 	// This port SHOULD NOT be exposed externally
