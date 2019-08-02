@@ -46,7 +46,6 @@ func (p *GatePlugin) Init(svc *service.MicroService) error {
 func main() {
 	service.New(
 		"gate",
-		service.NewMongo(service.MongoConfig{}),
 		service.NewMetrics(service.MetricsConfig{}),
 		service.NewHttp(service.HttpConfig{}),
 		&GatePlugin{},
