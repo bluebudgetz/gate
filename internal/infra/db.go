@@ -14,9 +14,6 @@ func NewMongoClient(ctx context.Context, cfg config.DatabaseConfig) (*mongo.Clie
 	if client, err := mongo.NewClient(options.Client().ApplyURI(cfg.MongoURI)); err != nil {
 		return nil, nil, err
 	} else if err := client.Connect(ctx); err != nil {
-		// TODO: this means that if MongoDB is not available, we cannot start new Gate instances; a better behavior
-		// 	     would be to return errors in runtime, so we can return service-not-available responses instead. This
-		//       might affect auto-scaling as well :(
 		return nil, nil, err
 	} else {
 		return client, func(ctx context.Context) {

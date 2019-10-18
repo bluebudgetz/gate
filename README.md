@@ -8,3 +8,4 @@ Bluebudgetz API gateway.
 - [ ] Implement authentication (JWT)
 - [ ] Show badges on README.md (Golang, Google Cloud Build, etc)
 - [ ] Integrate [Cloud Code](https://cloud.google.com/code/docs/intellij/quickstart-IDEA)
+- [ ] Gate should start even if MongoDB is down (just return 500 for requests)
