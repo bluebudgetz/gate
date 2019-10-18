@@ -2,11 +2,13 @@ package infra
 
 import (
 	"context"
-	"github.com/bluebudgetz/gate/internal/config"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"strconv"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
+
+	"github.com/bluebudgetz/gate/internal/config"
 )
 
 func NewMonitoringHTTPServer(cfg config.MonitoringConfig) (*http.Server, func(ctx context.Context), error) {

@@ -1,11 +1,12 @@
 package infra
 
 import (
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	glog "log"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func SetupLogging() {

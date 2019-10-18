@@ -2,11 +2,13 @@ package infra
 
 import (
 	"context"
-	"github.com/bluebudgetz/gate/internal/config"
+
 	"github.com/go-redis/redis"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/bluebudgetz/gate/internal/config"
 )
 
 func NewMongoClient(ctx context.Context, cfg config.DatabaseConfig) (*mongo.Client, func(context.Context), error) {

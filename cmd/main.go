@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
-	"github.com/bluebudgetz/gate/internal/config"
-	"github.com/bluebudgetz/gate/internal/infra"
-	"github.com/bluebudgetz/gate/internal/rest/accounts"
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
-	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis"
+	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/bluebudgetz/gate/internal/config"
+	"github.com/bluebudgetz/gate/internal/infra"
+	"github.com/bluebudgetz/gate/internal/rest/accounts"
 )
 
 func main() {

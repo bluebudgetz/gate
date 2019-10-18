@@ -1,8 +1,9 @@
 package infra
 
 import (
-	"github.com/bluebudgetz/gate/internal/infra/render"
 	"github.com/gin-gonic/gin"
+
+	"github.com/bluebudgetz/gate/internal/infra/render"
 )
 
 const ErrorTypeHTTP gin.ErrorType = 1 << 61

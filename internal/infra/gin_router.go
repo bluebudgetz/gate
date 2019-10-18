@@ -1,14 +1,16 @@
 package infra
 
 import (
-	"github.com/bluebudgetz/gate/internal/config"
+	"net/http"
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/secure"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"net/http"
-	"time"
+
+	"github.com/bluebudgetz/gate/internal/config"
 )
 
 func init() {

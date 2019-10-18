@@ -3,8 +3,9 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func OptionalObjectID(value interface{}) *string {

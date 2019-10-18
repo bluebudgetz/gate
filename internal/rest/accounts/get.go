@@ -3,15 +3,17 @@ package accounts
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bluebudgetz/gate/internal/infra/render"
-	"github.com/bluebudgetz/gate/internal/rest/util"
+	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
-	"time"
+
+	"github.com/bluebudgetz/gate/internal/infra/render"
+	"github.com/bluebudgetz/gate/internal/rest/util"
 )
 
 //go:generate go-bindata -o ./assets.go -ignore ".*\\.go" -pkg accounts ./...

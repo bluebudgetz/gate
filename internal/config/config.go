@@ -1,9 +1,10 @@
 package config
 
 import (
+	"os"
+
 	"github.com/jessevdk/go-flags"
 	"github.com/rs/zerolog/log"
-	"os"
 )
 
 type DatabaseConfig struct {
