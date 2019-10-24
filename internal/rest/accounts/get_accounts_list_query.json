@@ -74,10 +74,10 @@
   {
     "$addFields": {
       "incoming": {
-        "$toDecimal": { "$sum": "$incomingTx.amount" }
+        "$toDouble": { "$sum": "$incomingTx.amount" }
       },
       "outgoing": {
-        "$toDecimal": { "$sum": "$outgoingTx.amount" }
+        "$toDouble": { "$sum": "$outgoingTx.amount" }
       }
     }
   },

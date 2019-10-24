@@ -2,72 +2,104 @@ package render
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
+
+	"github.com/bluebudgetz/gate/internal/util"
 )
 
 var (
-	supportedContentTypes = []string{
-		gin.MIMEYAML,
+	OfferedContentTypes = []string{
+		"application/x-yaml",
 		"application/yaml",
 		"text/yaml",
-		gin.MIMEJSON,
-		gin.MIMEXML,
-		gin.MIMEXML2,
-		gin.MIMEPlain,
-		gin.MIMEHTML,
+		"application/json",
+		"text/json",
+		"application/xml",
+		"text/xml",
+		"text/html",
+		"text/plain",
 	}
 )
 
-func Render(c *gin.Context, statusCode int, data interface{}) {
-	acceptedMimeType := c.NegotiateFormat(supportedContentTypes...)
-	if acceptedMimeType == "" || len(c.Accepted) == 0 {
-		c.AbortWithStatus(http.StatusNotAcceptable)
-		return
-	}
-
-	switch acceptedMimeType {
-	case gin.MIMEJSON:
-		c.JSON(statusCode, data)
-
-	case gin.MIMEHTML:
-		c.Header("Content-Type", gin.MIMEHTML)
-		c.Status(http.StatusOK) // send HTTP 200 since this is most probably a browser
-		if _, err := c.Writer.WriteString("<!DOCTYPE html><html><body><pre>"); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		jsonEncoder := json.NewEncoder(c.Writer)
-		jsonEncoder.SetEscapeHTML(false)
-		jsonEncoder.SetIndent("", "  ")
-		if err := jsonEncoder.Encode(data); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
-		}
-		if _, err := c.Writer.WriteString("</pre></body></html>"); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
+func Render(w http.ResponseWriter, r *http.Request, v interface{}) {
+	switch acceptedMimeType := util.NegotiateContentType(r.Header.Get("Accept"), OfferedContentTypes, ""); acceptedMimeType {
+	case "application/x-yaml", "application/yaml", "text/yaml":
+		w.Header().Set("Content-Type", acceptedMimeType)
+		encoder := yaml.NewEncoder(w)
+		defer encoder.Close()
+		if err := encoder.Encode(v); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
 		}
 
-	case gin.MIMEXML, gin.MIMEXML2:
-		c.XML(statusCode, data)
-
-	case gin.MIMEPlain:
-		c.Header("Content-Type", gin.MIMEPlain)
-		c.Status(statusCode)
-		jsonEncoder := json.NewEncoder(c.Writer)
-		jsonEncoder.SetEscapeHTML(false)
-		jsonEncoder.SetIndent("", "  ")
-		if err := jsonEncoder.Encode(data); err != nil {
-			c.AbortWithError(http.StatusInternalServerError, err)
-			return
+	case "application/json", "text/json":
+		w.Header().Set("Content-Type", acceptedMimeType)
+		encoder := json.NewEncoder(w)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(v); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
 		}
 
-	case "text/yaml", "application/yaml", gin.MIMEYAML:
-		c.YAML(statusCode, data)
+	case "application/xml", "text/xml":
+		w.Header().Set("Content-Type", acceptedMimeType)
+		encoder := xml.NewEncoder(w)
+		if err := encoder.Encode(v); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		} else if err := encoder.Flush(); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		}
+
+	case "text/html":
+		w.WriteHeader(http.StatusOK) // send HTTP 200 since this is most probably a browser
+		w.Header().Set("Content-Type", acceptedMimeType)
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		encoder.SetEscapeHTML(false)
+		if _, err := w.Write([]byte("<!DOCTYPE html><html><body><pre>")); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		} else if err := encoder.Encode(v); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		} else if _, err := w.Write([]byte("</pre></body></html>")); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		}
+
+	case "text/plain":
+		w.Header().Set("Content-Type", acceptedMimeType)
+		encoder := json.NewEncoder(w)
+		encoder.SetIndent("", "  ")
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(v); err != nil {
+			log.Warn().
+				Str("mimeType", acceptedMimeType).
+				Interface("data", v).
+				Msg("Failed encoding data to response")
+		}
 
 	default:
-		c.AbortWithStatus(http.StatusNotAcceptable)
+		w.WriteHeader(http.StatusNotAcceptable)
 	}
 }

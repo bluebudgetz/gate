@@ -1,0 +1,287 @@
+package infra
+
+/*import (
+	"encoding/json"
+	"encoding/xml"
+	"fmt"
+	"mime"
+	"net/http"
+	"reflect"
+	"strconv"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
+)
+
+//	*r = *r.WithContext(context.WithValue(r.Context(), "k", "test"))
+
+func AdaptHandler(handler interface{}) (http.HandlerFunc, error) {
+
+	// Validate handler function
+	handlerType := reflect.TypeOf(handler)
+	if handlerType.Kind() != reflect.Func {
+		return nil, errors.Errorf("handler must be a function, but it is: %+v", handler)
+	} else if handlerType.IsVariadic() {
+		return nil, errors.Errorf("handler must not be variadic")
+	} else if handlerType.NumIn() != 1 {
+		return nil, errors.Errorf("handler must have exactly one argument")
+	} else if handlerType.NumOut() != 2 {
+		return nil, errors.Errorf("handler must have exactly two return values")
+	}
+
+	// Validate input parameter (must be a binding target struct)
+	inputParamType := handlerType.In(0)
+	if inputParamType.Kind() != reflect.Struct {
+		return nil, errors.Errorf("handler must have exactly one binding-target struct argument")
+	}
+
+	// Validate 1st return value
+	var resultParamType reflect.Type
+	resultParamPtrType := handlerType.Out(0)
+	if resultParamPtrType.Kind() != reflect.Ptr {
+		return nil, errors.Errorf("handler 1st return value must be a pointer to a struct")
+	} else if resultParamPtrType.Elem().Kind() != reflect.Struct {
+		return nil, errors.Errorf("handler 1st return value must be a pointer to a struct")
+	} else {
+		resultParamType = resultParamPtrType.Elem()
+	}
+
+	// Validate 2nd return value
+	errorParamType := handlerType.Out(1)
+	if errorParamType.Kind() != reflect.Interface {
+		return nil, errors.Errorf("handler 2nd return value must be error")
+	} else if errorParamType.PkgPath() != "" {
+		return nil, errors.Errorf("handler 2nd return value must be error")
+	} else if errorParamType.Name() != "error" {
+		return nil, errors.Errorf("handler 2nd return value must be error")
+	}
+
+	handlerFunc := reflect.ValueOf(handler)
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		// Decode request payload, if any
+		inputParamPtrValue := reflect.New(inputParamType)
+		if statusCode, err := bind(r, inputParamPtrValue); err != nil {
+			if statusCode >= http.StatusInternalServerError {
+				log.Error().Err(err).Msg("Request binding failed")
+			}
+			w.WriteHeader(statusCode)
+			return
+		}
+
+		// TODO: call method with input parameter
+		// TODO: handle panics as internal errors
+		// TODO: handle error returned from method
+		in := make([]reflect.Value, 2)
+		in[0] = reflect.ValueOf(c)
+		in[1] = inputParamValue.Elem()
+
+		out := handlerFunc.Call(in)
+
+		errOut := out[1]
+		if !errOut.IsNil() {
+			c.Error(errOut.Interface().(error))
+			return
+		}
+
+		resultOut := out[0]
+		statusCode := http.StatusOK
+
+		if !resultOut.IsNil() {
+
+			switch c.Request.Method {
+			case http.MethodGet:
+
+			case http.MethodDelete:
+			case http.MethodHead:
+			case http.MethodOptions:
+			case http.MethodPatch:
+			case http.MethodPost:
+			case http.MethodPut:
+			case http.MethodTrace:
+			default:
+			}
+			switch acceptedMimeType {
+			case gin.MIMEJSON:
+				c.JSON(statusCode, map[string]interface{}{"errors": errors})
+
+			case gin.MIMEHTML:
+				c.Header("Content-Type", gin.MIMEHTML)
+				c.Status(http.StatusOK) // send HTTP 200 since this is most probably a browser
+				if err := errorsTemplate.Execute(c.Writer, errors); err != nil {
+					c.AbortWithError(http.StatusInternalServerError, err)
+				}
+
+			case gin.MIMEXML, gin.MIMEXML2:
+				c.XML(statusCode, map[string]interface{}{"errors": errors})
+
+			case gin.MIMEPlain:
+				c.Header("Content-Type", gin.MIMEPlain)
+				c.Status(statusCode)
+				for _, err := range errors {
+					_, _ = c.Writer.WriteString(err.Error() + "\n")
+				}
+
+			case "text/yaml", "application/yaml", gin.MIMEYAML:
+				c.YAML(statusCode, map[string]interface{}{"errors": errors})
+
+			default:
+				c.AbortWithStatus(http.StatusNotAcceptable)
+			}
+		}
+
+	}, nil
+}
+
+func bind(r *http.Request, v reflect.Value) (statusCode int, err error) {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return http.StatusInternalServerError, fmt.Errorf("handler input parameter not a struct")
+	}
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		fv := v.Field(i)
+		ft := t.Field(i)
+		if headerSpec := ft.Tag.Get("header"); headerSpec != "" {
+			if statusCode, err := bindRequestHeader(r, headerSpec, fv); err != nil || statusCode > 0 {
+				return statusCode, err
+			}
+		} else if querySpec := ft.Tag.Get("query"); querySpec != "" {
+			if statusCode, err := bindRequestQuery(r, querySpec, fv); err != nil || statusCode > 0 {
+				return statusCode, err
+			}
+		} else if cookieSpec := ft.Tag.Get("cookie"); cookieSpec != "" {
+			if statusCode, err := bindRequestQuery(r, cookieSpec, fv); err != nil || statusCode > 0 {
+				return statusCode, err
+			}
+		} else if bodySpec, ok := ft.Tag.Lookup("body"); ok {
+			if bodySpec != "" {
+				return http.StatusInternalServerError, fmt.Errorf("'body' spec must be an empty string")
+			} else if statusCode, err := bindRequestBody(r, fv); err != nil || statusCode > 0 {
+				return statusCode, err
+			}
+		}
+	}
+	return 0, nil
+}
+
+func bindRequestHeader(r *http.Request, headerName string, v reflect.Value) (statusCode int, err error) {
+	if statusCode, err := bindValues(r.Header[headerName], v); err != nil {
+		return statusCode, err
+	}
+	return 0, nil
+}
+
+func bindRequestQuery(r *http.Request, queryParamName string, v reflect.Value) (statusCode int, err error) {
+	// TODO: implement bindRequestQuery
+	panic("query tag not implemented")
+}
+
+func bindRequestCookie(r *http.Request, cookieName string, v reflect.Value) (statusCode int, err error) {
+	// TODO: implement bindRequestCookie
+	panic("cookie tag not implemented")
+}
+
+func bindRequestBody(r *http.Request, fv reflect.Value) (statusCode int, err error) {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		return http.StatusUnsupportedMediaType, nil
+	}
+	switch mediaType {
+	case "application/x-yaml", "application/yaml", "text/yaml":
+		decoder := yaml.NewDecoder(r.Body)
+		decoder.SetStrict(false)
+		if err := decoder.Decode(fv); err != nil {
+			return http.StatusBadRequest, err
+		}
+
+	case "application/json", "text/json":
+		decoder := json.NewDecoder(r.Body)
+		decoder.UseNumber()
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(fv); err != nil {
+			return http.StatusBadRequest, err
+		}
+
+	case "application/xml", "text/xml":
+		decoder := xml.NewDecoder(r.Body)
+		if err := decoder.Decode(fv); err != nil {
+			return http.StatusBadRequest, err
+		}
+
+	default:
+		return http.StatusBadRequest, err
+	}
+	return 0, nil
+}
+
+func bindValues(values []string, v reflect.Value) (statusCode int, err error) {
+	switch v.Kind() {
+	case reflect.Bool:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else if b, err := strconv.ParseBool(values[0]); err != nil {
+			return http.StatusBadRequest, nil
+		} else {
+			v.SetBool(b)
+		}
+	case reflect.Int, reflect.Int8, reflect.Int32, reflect.Int64:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else if i, err := strconv.ParseInt(values[0], 10, 64); err != nil {
+			return http.StatusBadRequest, nil
+		} else {
+			v.SetInt(i)
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint32, reflect.Uint64:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else if i, err := strconv.ParseUint(values[0], 10, 64); err != nil {
+			return http.StatusBadRequest, nil
+		} else {
+			v.SetUint(i)
+		}
+	case reflect.Float32, reflect.Float64:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else if f, err := strconv.ParseFloat(values[0], 64); err != nil {
+			return http.StatusBadRequest, nil
+		} else {
+			v.SetFloat(f)
+		}
+	case reflect.Ptr:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else {
+			targetType := v.Type().Elem()
+			targetValue := reflect.New(targetType)
+			if statusCode, err := bindValues(values, targetValue); err != nil || statusCode > 0 {
+				return statusCode, err
+			} else {
+				v.Set(targetValue)
+			}
+		}
+	case reflect.String, reflect.Interface:
+		if len(values) == 0 {
+			v.Set(reflect.Zero(v.Type()))
+		} else {
+			v.SetString(values[0])
+		}
+	case reflect.Slice:
+		v.SetLen(len(values))
+		v.SetCap(len(values))
+		for i, value := range values {
+			vi := v.Index(i)
+			if statusCode, err := bindValues([]string{value}, vi); err != nil || statusCode > 0 {
+				return statusCode, err
+			}
+		}
+	default:
+		panic("not implemented")
+	}
+	return 0, nil
+}
+*/

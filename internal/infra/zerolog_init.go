@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jwells131313/goethe"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -33,6 +34,7 @@ func SetupLogging() {
 		log.Fatal().Msg("log level must be one of: disabled, panic, fatal, error, warn, info or debug")
 	}
 
+	log.Logger = log.Logger.Hook(zerolog.HookFunc(threadIDHook))
 	if logPretty {
 		log.Logger = log.Output(newConsoleWriter()).With().Int("pid", os.Getpid()).Logger()
 	} else {
@@ -42,4 +44,9 @@ func SetupLogging() {
 
 	glog.SetFlags(0)
 	glog.SetOutput(log.Logger)
+}
+
+func threadIDHook(e *zerolog.Event, _ zerolog.Level, _ string) {
+	// Used by request logger
+	e.Int64("tid", goethe.GG().GetThreadID())
 }

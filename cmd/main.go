@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/bluebudgetz/gate/internal/config"
 	"github.com/bluebudgetz/gate/internal/infra"
+	"github.com/bluebudgetz/gate/internal/rest"
 	"github.com/bluebudgetz/gate/internal/rest/accounts"
 )
 
@@ -64,18 +64,12 @@ func main() {
 		}()
 	}
 
-	// Create HTTP router
-	var router *gin.Engine
-	if r, err := infra.NewRouter(*cfg); err != nil {
-		log.Fatal().Err(err).Msg("Failed creating Gin router")
-		return
-	} else {
-		router = r
-	}
+	// Managers
+	accountsMgr := accounts.NewManager(mongoClient)
 
-	// Add handlers
-	// TODO: cacheStore := persistence.NewInMemoryStore(time.Second)
-	router.GET("/accounts", accounts.GET(mongoClient))
+	// Create Chi router
+	router := infra.NewChiRouter(*cfg)
+	router.Route("/", rest.NewRoutes(accountsMgr))
 
 	// Start the HTTP server using our router
 	serviceServer := &http.Server{

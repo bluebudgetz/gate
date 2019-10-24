@@ -22,7 +22,7 @@ type HTTPCORSConfig struct {
 	AllowHeaders     []string `long:"allow-header" env:"ALLOW_HEADER" value-name:"HEADER" description:"Headers allowed in CORS requests"`
 	AllowCredentials bool     `long:"allow-credentials" env:"ALLOW_CREDENTIALS" description:"Whether to allow client code to access responses when credentials were sent in CORS requests"`
 	ExposeHeaders    []string `long:"expose-header" env:"EXPOSE_HEADER" value-name:"HEADER" description:"Headers exposed to client browser code in CORS requests"`
-	MaxAge           int64    `long:"max-age" env:"MAX_AGE" value-name:"SECONDS" default:"30" description:"How long (in seconds) can preflight responses be cached"`
+	MaxAge           int      `long:"max-age" env:"MAX_AGE" value-name:"SECONDS" default:"30" description:"How long (in seconds) can preflight responses be cached"`
 }
 
 type HTTPConfig struct {
