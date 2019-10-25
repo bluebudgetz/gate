@@ -30,6 +30,14 @@ func OptionalObjectID(value interface{}) *primitive.ObjectID {
 	}
 }
 
+func MustObjectID(value interface{}) primitive.ObjectID {
+	id := OptionalObjectID(value)
+	if id == nil {
+		panic("object ID value is nil but required")
+	}
+	return *id
+}
+
 func OptionalObjectIDHex(value interface{}) *string {
 	if value == nil {
 		return nil
@@ -43,6 +51,10 @@ func OptionalObjectIDHex(value interface{}) *string {
 	} else {
 		return nil
 	}
+}
+
+func MustObjectIDHex(value interface{}) string {
+	return MustObjectID(value).Hex()
 }
 
 func OptionalDateTime(value interface{}) *time.Time {
@@ -66,4 +78,16 @@ func MustDateTime(value interface{}) time.Time {
 		panic("date-time value is nil but required")
 	}
 	return *dateTime
+}
+
+func OptionalString(value interface{}) *string {
+	if value == nil {
+		return nil
+	} else if s, ok := value.(string); ok {
+		return &s
+	} else if sp, ok := value.(*string); ok {
+		return sp
+	} else {
+		return nil
+	}
 }
