@@ -60,7 +60,7 @@ func NewConfig() (*Config, error) {
 	log.Info().
 		Interface("config", config).
 		Interface("env", os.Environ()).
-		Interface("args", os.Args).
+		Interface("args", os.Args[1:]).
 		Msg("Configuration loaded")
 
 	return &config, nil
