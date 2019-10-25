@@ -1,4 +1,5 @@
 /bin/gate
+/bin/go_build_gate
 *.local.*
 .DS_Store
 Thumbs.db
