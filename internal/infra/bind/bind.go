@@ -142,13 +142,28 @@ func bindRequestHeader(r *http.Request, headerName string, required bool, v refl
 }
 
 func bindRequestQuery(r *http.Request, queryParamName string, required bool, v reflect.Value) (statusCode int, err error) {
-	// TODO: implement bindRequestQuery
-	panic("query tag not implemented")
+	if err := r.ParseForm(); err != nil {
+		return http.StatusBadRequest, err
+	}
+
+	values := r.Form[queryParamName]
+	if values == nil {
+		values = make([]string, 0)
+	}
+
+	if statusCode, err := bindValues(values, v, required); err != nil {
+		return statusCode, err
+	}
+	return 0, nil
 }
 
 func bindRequestCookie(r *http.Request, cookieName string, required bool, v reflect.Value) (statusCode int, err error) {
-	// TODO: implement bindRequestCookie
-	panic("cookie tag not implemented")
+	if cookie, err := r.Cookie(cookieName); err != nil {
+		return http.StatusBadRequest, err
+	} else if statusCode, err := bindValues([]string{cookie.Value}, v, required); err != nil {
+		return statusCode, err
+	}
+	return 0, nil
 }
 
 func bindRequestBody(r *http.Request, fv reflect.Value) (statusCode int, err error) {
