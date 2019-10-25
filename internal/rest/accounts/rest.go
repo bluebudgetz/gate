@@ -2,7 +2,6 @@ package accounts
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi"
 
@@ -12,13 +11,7 @@ import (
 )
 
 type (
-	GetAccountResponse struct {
-		ID        string     `json:"id" yaml:"id"`
-		CreatedOn time.Time  `json:"createdOn" yaml:"createdOn"`
-		UpdatedOn *time.Time `json:"updatedOn" yaml:"updatedOn"`
-		Name      string     `json:"name" yaml:"name"`
-		ParentID  *string    `json:"parentId" yaml:"parentId"`
-	}
+	GetAccountResponse struct{ Account Account }
 
 	PostAccountRequest struct {
 		Body struct {
@@ -27,12 +20,7 @@ type (
 		} `body:""`
 	}
 
-	PostAccountResponse struct {
-		ID        string    `json:"id" yaml:"id"`
-		CreatedOn time.Time `json:"createdOn" yaml:"createdOn"`
-		Name      string    `json:"name" yaml:"name"`
-		ParentID  *string   `json:"parentId" yaml:"parentId"`
-	}
+	PostAccountResponse struct{ Account Account }
 
 	PutAccountRequest struct {
 		Body struct {
@@ -41,13 +29,7 @@ type (
 		} `body:""`
 	}
 
-	PutAccountResponse struct {
-		ID        string     `json:"id" yaml:"id"`
-		CreatedOn time.Time  `json:"createdOn" yaml:"createdOn"`
-		UpdatedOn *time.Time `json:"updatedOn" yaml:"updatedOn"`
-		Name      string     `json:"name" yaml:"name"`
-		ParentID  *string    `json:"parentId" yaml:"parentId"`
-	}
+	PutAccountResponse struct{ Account Account }
 
 	PatchAccountRequest struct {
 		Body struct {
@@ -56,13 +38,7 @@ type (
 		} `body:""`
 	}
 
-	PatchAccountResponse struct {
-		ID        string    `json:"id" yaml:"id"`
-		CreatedOn time.Time `json:"createdOn" yaml:"createdOn"`
-		UpdatedOn time.Time `json:"updatedOn" yaml:"updatedOn"`
-		Name      string    `json:"name" yaml:"name"`
-		ParentID  *string   `json:"parentId" yaml:"parentId"`
-	}
+	PatchAccountResponse struct{ Account Account }
 )
 
 func Delete(mgr Manager) http.HandlerFunc {
@@ -94,13 +70,7 @@ func Get(mgr Manager) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 
 		} else {
-			render.Render(w, r, GetAccountResponse{
-				ID:        acc.ID,
-				CreatedOn: acc.CreatedOn,
-				UpdatedOn: acc.UpdatedOn,
-				Name:      acc.Name,
-				ParentID:  acc.ParentID,
-			})
+			render.Render(w, r, GetAccountResponse{Account: *acc})
 		}
 	}
 }
@@ -134,13 +104,7 @@ func Patch(mgr Manager) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 
 		} else {
-			render.Render(w, r, PatchAccountResponse{
-				ID:        acc.ID,
-				CreatedOn: acc.CreatedOn,
-				UpdatedOn: *acc.UpdatedOn,
-				Name:      acc.Name,
-				ParentID:  acc.ParentID,
-			})
+			render.Render(w, r, PatchAccountResponse{Account: *acc})
 		}
 	}
 }
@@ -155,12 +119,7 @@ func Post(mgr Manager) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 
 		} else {
-			render.Render(w, r, PostAccountResponse{
-				ID:        acc.ID,
-				CreatedOn: acc.CreatedOn,
-				Name:      acc.Name,
-				ParentID:  acc.ParentID,
-			})
+			render.Render(w, r, PostAccountResponse{Account: *acc})
 		}
 	}
 }
@@ -171,21 +130,15 @@ func Put(mgr Manager) http.HandlerFunc {
 		if !bind.Bind(r, w, &req) {
 			return
 
-		} else if account, err := mgr.UpdateAccount(r.Context(), chi.URLParam(r, "ID"), req.Body.Name, req.Body.ParentID); err == ErrInvalidID {
+		} else if acc, err := mgr.UpdateAccount(r.Context(), chi.URLParam(r, "ID"), req.Body.Name, req.Body.ParentID); err == ErrInvalidID {
 			w.WriteHeader(http.StatusBadRequest)
 
-		} else if err == ErrInternalError || account == nil {
+		} else if err == ErrInternalError || acc == nil {
 			w.WriteHeader(http.StatusInternalServerError)
 
 		} else {
 			w.WriteHeader(http.StatusOK)
-			render.Render(w, r, PutAccountResponse{
-				ID:        account.ID,
-				CreatedOn: account.CreatedOn,
-				UpdatedOn: account.UpdatedOn,
-				Name:      account.Name,
-				ParentID:  account.ParentID,
-			})
+			render.Render(w, r, PutAccountResponse{Account: *acc})
 		}
 	}
 }
