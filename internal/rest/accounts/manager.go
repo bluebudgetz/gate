@@ -71,7 +71,7 @@ func (m *manager) DeleteAccount(ctx context.Context, id string) error {
 	if id == "" {
 		return ErrInvalidID
 
-	} else if result, err := m.coll().DeleteOne(ctx, bson.M{"_id": util.OptionalObjectID(id)}); err == mongo.ErrNoDocuments {
+	} else if result, err := m.coll().DeleteOne(ctx, bson.M{"_id": util.MustObjectID(id)}); err == mongo.ErrNoDocuments {
 		return ErrNotFound
 
 	} else if err != nil {
@@ -93,7 +93,7 @@ func (m *manager) GetAccount(ctx context.Context, id string) (*Account, error) {
 
 	doc := bson.M{}
 
-	if result := m.coll().FindOne(ctx, bson.M{"_id": util.OptionalObjectID(id)}); result.Err() == mongo.ErrNoDocuments {
+	if result := m.coll().FindOne(ctx, bson.M{"_id": util.MustObjectID(id)}); result.Err() == mongo.ErrNoDocuments {
 		return nil, ErrNotFound
 
 	} else if result.Err() != nil {
@@ -109,7 +109,7 @@ func (m *manager) GetAccount(ctx context.Context, id string) (*Account, error) {
 
 	} else {
 		return &Account{
-			ID:        *util.OptionalObjectIDHex(doc["_id"]),
+			ID:        util.MustObjectIDHex(doc["_id"]),
 			CreatedOn: util.MustDateTime(doc["createdOn"]),
 			UpdatedOn: util.OptionalDateTime(doc["updatedOn"]),
 			Name:      doc["name"].(string),
@@ -155,7 +155,7 @@ func (m *manager) GetAccountsList(ctx context.Context, page uint, pageSize uint)
 			accDoc := dataArrayItem.(bson.M)
 			accounts = append(accounts, AccountWithBalance{
 				Account: Account{
-					ID:        *util.OptionalObjectIDHex(accDoc["_id"]),
+					ID:        util.MustObjectIDHex(accDoc["_id"]),
 					CreatedOn: util.MustDateTime(accDoc["createdOn"]),
 					UpdatedOn: util.OptionalDateTime(accDoc["updatedOn"]),
 					Name:      accDoc["name"].(string),
@@ -188,14 +188,14 @@ func (m *manager) PatchAccount(ctx context.Context, id string, name *string, par
 		doc["name"] = *name
 	}
 	if parentID != nil {
-		doc["parentId"] = util.OptionalObjectID(*parentID)
+		doc["parentId"] = util.MustObjectID(*parentID)
 	}
 
 	// Patch it
 	after := options.After
 	opts := &options.FindOneAndUpdateOptions{ReturnDocument: &after}
 	updateSpec := bson.M{"$set": doc}
-	if result := m.coll().FindOneAndUpdate(ctx, bson.M{"_id": util.OptionalObjectID(id)}, updateSpec, opts); result.Err() == mongo.ErrNoDocuments {
+	if result := m.coll().FindOneAndUpdate(ctx, bson.M{"_id": util.MustObjectID(id)}, updateSpec, opts); result.Err() == mongo.ErrNoDocuments {
 		return nil, ErrNotFound
 
 	} else if result.Err() != nil {
@@ -211,7 +211,7 @@ func (m *manager) PatchAccount(ctx context.Context, id string, name *string, par
 
 	} else {
 		return &Account{
-			ID:        *util.OptionalObjectIDHex(doc["_id"]),
+			ID:        util.MustObjectIDHex(doc["_id"]),
 			CreatedOn: util.MustDateTime(doc["createdOn"]),
 			UpdatedOn: util.OptionalDateTime(doc["updatedOn"]),
 			Name:      doc["name"].(string),
@@ -248,7 +248,7 @@ func (m *manager) UpdateAccount(ctx context.Context, id string, name string, par
 	t := time.Now()
 
 	// Update spec
-	filter := bson.M{"_id": util.OptionalObjectID(id)}
+	filter := bson.M{"_id": util.MustObjectID(id)}
 	doc := bson.M{
 		"updatedOn": t,
 		"name":      name,
@@ -262,14 +262,15 @@ func (m *manager) UpdateAccount(ctx context.Context, id string, name string, par
 	if result := m.coll().FindOneAndUpdate(ctx, filter, &bson.M{"$set": doc}, opts); result.Err() == mongo.ErrNoDocuments {
 
 		// Create it
+		doc["_id"] = util.MustObjectID(id)
 		doc["createdOn"] = t
 		doc["updatedOn"] = nil
-		if result, err := m.coll().InsertOne(ctx, &doc); err != nil {
+		if _, err := m.coll().InsertOne(ctx, &doc); err != nil {
 			log.Error().Err(err).Msg("Failed persisting new account")
 			return nil, ErrInternalError
 		} else {
 			return &Account{
-				ID:        result.InsertedID.(primitive.ObjectID).Hex(),
+				ID:        util.MustObjectID(id).Hex(),
 				CreatedOn: util.MustDateTime(doc["createdOn"]),
 				UpdatedOn: nil,
 				Name:      name,
@@ -287,7 +288,7 @@ func (m *manager) UpdateAccount(ctx context.Context, id string, name string, par
 
 	} else {
 		return &Account{
-			ID:        *util.OptionalObjectIDHex(doc["_id"]),
+			ID:        util.MustObjectIDHex(doc["_id"]),
 			CreatedOn: util.MustDateTime(doc["createdOn"]),
 			UpdatedOn: util.OptionalDateTime(doc["updatedOn"]),
 			Name:      doc["name"].(string),
