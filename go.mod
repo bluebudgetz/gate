@@ -10,8 +10,8 @@ require (
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/uuid v1.1.1
+	github.com/huandu/go-tls v0.0.0-20190925082000-91fe9b1c23d1
 	github.com/jessevdk/go-flags v1.4.1-0.20181221193153-c0795c8afcf4
-	github.com/jwells131313/goethe v1.4.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/text v0.1.0
 	github.com/markusthoemmes/goautoneg v0.0.0-20190713162725-c6008fefa5b1

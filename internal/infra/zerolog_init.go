@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jwells131313/goethe"
+	"github.com/huandu/go-tls"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -48,5 +48,5 @@ func SetupLogging() {
 
 func threadIDHook(e *zerolog.Event, _ zerolog.Level, _ string) {
 	// Used by request logger
-	e.Int64("tid", goethe.GG().GetThreadID())
+	e.Int64("tid", tls.ID())
 }
