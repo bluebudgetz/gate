@@ -11,11 +11,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/go-playground/validator.v9"
 	"gopkg.in/yaml.v2"
 )
-
-// TODO: Support bind result validation via JSON schema on Go struct
-// TODO: Support bind result validation via optional implementation of a "Validator" interface
 
 func Bind(r *http.Request, w http.ResponseWriter, target interface{}) bool {
 	targetValue := reflect.ValueOf(target)
@@ -131,6 +129,20 @@ func Bind(r *http.Request, w http.ResponseWriter, target interface{}) bool {
 			}
 		}
 	}
+
+	v := r.Context().Value("validator").(*validator.Validate)
+	if err := v.StructCtx(r.Context(), target); err != nil {
+		if _, ok := err.(validator.ValidationErrors); ok {
+			// TODO: send back validation errors to client
+			w.WriteHeader(http.StatusBadRequest)
+			return false
+		} else {
+			log.Error().Err(err).Msg("Input validation failed")
+			w.WriteHeader(http.StatusInternalServerError)
+			return false
+		}
+	}
+
 	return true
 }
 

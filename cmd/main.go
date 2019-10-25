@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/bluebudgetz/gate/internal/config"
 	"github.com/bluebudgetz/gate/internal/infra"
@@ -80,6 +82,12 @@ func main() {
 		WriteTimeout:      time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
 		IdleTimeout:       time.Duration(cfg.HTTP.IdleTimeout) * time.Second,
 		MaxHeaderBytes:    cfg.HTTP.MaxHeaderBytes,
+		BaseContext: func(l net.Listener) context.Context {
+			var ctx context.Context
+			ctx = context.Background()
+			ctx = context.WithValue(ctx, "validator", validator.New())
+			return ctx
+		},
 	}
 	if err := serviceServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Warn().Err(err).Msg("Service HTTP server failed")
