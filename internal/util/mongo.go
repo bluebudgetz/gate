@@ -4,11 +4,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
-)
-
-var (
-	MongoReturnDocAfter = options.After
 )
 
 func OptionalObjectID(value interface{}) *primitive.ObjectID {
