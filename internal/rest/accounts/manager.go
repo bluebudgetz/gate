@@ -1,7 +1,5 @@
 package accounts
 
-//go:generate go-bindata -o ./assets.go -ignore ".*\\.go" -pkg accounts ./...
-
 import (
 	"context"
 	"encoding/json"
