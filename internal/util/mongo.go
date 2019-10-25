@@ -56,8 +56,13 @@ func OptionalDateTime(value interface{}) *time.Time {
 	} else if d, ok := value.(primitive.DateTime); ok {
 		dt := time.Unix(int64(d)/1000, 0)
 		return &dt
+	} else if d, ok := value.(time.Time); ok {
+		return &d
+	} else if d, ok := value.(*time.Time); ok {
+		return d
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func MustDateTime(value interface{}) time.Time {
