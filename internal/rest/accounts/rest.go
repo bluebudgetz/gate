@@ -20,21 +20,6 @@ type (
 		ParentID  *string    `json:"parentId" yaml:"parentId"`
 	}
 
-	PatchAccountRequest struct {
-		Body struct {
-			Name     *string `json:"name" yaml:"name"`
-			ParentID *string `json:"parentId" yaml:"parentId"`
-		} `body:""`
-	}
-
-	PatchAccountResponse struct {
-		ID        string    `json:"id" yaml:"id"`
-		CreatedOn time.Time `json:"createdOn" yaml:"createdOn"`
-		UpdatedOn time.Time `json:"updatedOn" yaml:"updatedOn"`
-		Name      string    `json:"name" yaml:"name"`
-		ParentID  *string   `json:"parentId" yaml:"parentId"`
-	}
-
 	PostAccountRequest struct {
 		Body struct {
 			Name     string  `json:"name" yaml:"name"`
@@ -62,6 +47,21 @@ type (
 		UpdatedOn *time.Time `json:"updatedOn" yaml:"updatedOn"`
 		Name      string     `json:"name" yaml:"name"`
 		ParentID  *string    `json:"parentId" yaml:"parentId"`
+	}
+
+	PatchAccountRequest struct {
+		Body struct {
+			Name     *string `json:"name" yaml:"name"`
+			ParentID *string `json:"parentId" yaml:"parentId"`
+		} `body:""`
+	}
+
+	PatchAccountResponse struct {
+		ID        string    `json:"id" yaml:"id"`
+		CreatedOn time.Time `json:"createdOn" yaml:"createdOn"`
+		UpdatedOn time.Time `json:"updatedOn" yaml:"updatedOn"`
+		Name      string    `json:"name" yaml:"name"`
+		ParentID  *string   `json:"parentId" yaml:"parentId"`
 	}
 )
 
