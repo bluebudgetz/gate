@@ -2,11 +2,13 @@ package infra
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"runtime/debug"
 	"time"
 
 	"github.com/go-chi/chi/middleware"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -48,13 +50,13 @@ func RequestLogger(next http.Handler) http.Handler {
 		var event *zerolog.Event
 		var message string
 		if recovered != nil {
-			event = log.Error()
-			if err, ok := recovered.(error); ok {
-				event = event.Err(err)
-			} else {
-				event = event.Interface(zerolog.ErrorFieldName, recovered)
+			if _, ok := recovered.(error); !ok {
+				recovered = errors.Errorf("%s", recovered)
 			}
-			event = event.Str(zerolog.ErrorStackFieldName, string(stack)).Bytes("out", buf.Bytes())
+			event = log.Error().
+				Err(recovered.(error)).
+				Str(zerolog.ErrorStackFieldName, fmt.Sprintf("%s\n%s", recovered.(error).Error(), string(stack))).
+				Bytes("out", buf.Bytes())
 			message = "HTTP request failed"
 		} else {
 			event = log.Info()
