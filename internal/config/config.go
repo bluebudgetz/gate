@@ -32,6 +32,11 @@ type HTTPConfig struct {
 	DisableLogRequests bool           `long:"disable-request-log" env:"DISABLE_REQUEST_LOG" description:"Disable HTTP request log"`
 	BodyLimit          string         `long:"body-limit" env:"BODY_LIMIT" default:"2M" description:"Maximum allowed size for a request body, e.g. 500K, 2M, 1G, etc"`
 	GZipLevel          int            `long:"gzip-level" env:"GZIP_LEVEL" default:"-1" description:"HTTP GZip compression level"`
+	ReadTimeout        int            `long:"read-timeout" env:"READ_TIMEOUT" default:"0" description:"Maximum number of seconds to read the entire request, including the body"`
+	ReadHeaderTimeout  int            `long:"read-header-timeout" env:"READ_HEADER_TIMEOUT" default:"0" description:"Maximum number of seconds to read the request headers"`
+	WriteTimeout       int            `long:"write-timeout" env:"WRITE_TIMEOUT" default:"0" description:"Maximum number of seconds to write the response"`
+	IdleTimeout        int            `long:"idle-timeout" env:"IDLE_TIMEOUT" default:"0" description:"Maximum number of seconds to let keep-alive connections to live"`
+	MaxHeaderBytes     int            `long:"max-header-bytes" env:"MAX_HEADER_BYTES" default:"-1" description:"Maximum number of bytes to read for the request headers"`
 }
 
 type PubSubConfig struct {

@@ -73,11 +73,13 @@ func main() {
 
 	// Start the HTTP server using our router
 	serviceServer := &http.Server{
-		Addr:           ":" + strconv.Itoa(cfg.HTTP.Port),
-		Handler:        router,
-		ReadTimeout:    10 * time.Second, // TODO: externalize HTTP read timeout
-		WriteTimeout:   10 * time.Second, // TODO: externalize HTTP write timeout
-		MaxHeaderBytes: 1 << 20,          // TODO: externalize HTTP max header size
+		Addr:              ":" + strconv.Itoa(cfg.HTTP.Port),
+		Handler:           router,
+		ReadTimeout:       time.Duration(cfg.HTTP.ReadTimeout) * time.Second,
+		ReadHeaderTimeout: time.Duration(cfg.HTTP.ReadHeaderTimeout) * time.Second,
+		WriteTimeout:      time.Duration(cfg.HTTP.WriteTimeout) * time.Second,
+		IdleTimeout:       time.Duration(cfg.HTTP.IdleTimeout) * time.Second,
+		MaxHeaderBytes:    cfg.HTTP.MaxHeaderBytes,
 	}
 	if err := serviceServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Warn().Err(err).Msg("Service HTTP server failed")
