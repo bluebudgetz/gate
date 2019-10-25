@@ -9,3 +9,6 @@ Bluebudgetz API gateway.
 - [ ] Show badges on README.md (Golang, Google Cloud Build, etc)
 - [ ] Integrate [Cloud Code](https://cloud.google.com/code/docs/intellij/quickstart-IDEA)
 - [ ] Gate should start even if MongoDB is down (just return 500 for requests)
+- [ ] Thread ID implementation
+    - Consider https://github.com/huandu/go-tls
+    - Consider https://github.com/modern-go/gls
