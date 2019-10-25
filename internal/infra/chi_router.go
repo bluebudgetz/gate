@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -22,20 +23,25 @@ func NewChiRouter(cfg config.Config) chi.Router {
 		r.Use(RequestLogger)
 	}
 	r.Use(
+		chiMetrics,
 		chiRequestID,
 		middleware.NoCache,
-		cors.New(cors.Options{
-			AllowedOrigins:   cfg.HTTP.CORS.AllowOrigins,
-			AllowedMethods:   cfg.HTTP.CORS.AllowMethods,
-			AllowedHeaders:   cfg.HTTP.CORS.AllowHeaders,
-			ExposedHeaders:   cfg.HTTP.CORS.ExposeHeaders,
-			AllowCredentials: cfg.HTTP.CORS.AllowCredentials,
-			MaxAge:           cfg.HTTP.CORS.MaxAge, // 300 is the maximum value not ignored by any of major browsers
-		}).Handler,
+		corsHandler(cfg),
 		middleware.GetHead,
 		middleware.RedirectSlashes,
 		middleware.Compress(cfg.HTTP.GZipLevel),
 		middleware.Timeout(30*time.Second),
 	)
 	return r
+}
+
+func corsHandler(cfg config.Config) func(next http.Handler) http.Handler {
+	return cors.New(cors.Options{
+		AllowedOrigins:   cfg.HTTP.CORS.AllowOrigins,
+		AllowedMethods:   cfg.HTTP.CORS.AllowMethods,
+		AllowedHeaders:   cfg.HTTP.CORS.AllowHeaders,
+		ExposedHeaders:   cfg.HTTP.CORS.ExposeHeaders,
+		AllowCredentials: cfg.HTTP.CORS.AllowCredentials,
+		MaxAge:           cfg.HTTP.CORS.MaxAge, // 300 is the maximum value not ignored by any of major browsers
+	}).Handler
 }
