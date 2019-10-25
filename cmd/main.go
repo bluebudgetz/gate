@@ -17,6 +17,7 @@ import (
 	"github.com/bluebudgetz/gate/internal/infra"
 	"github.com/bluebudgetz/gate/internal/rest"
 	"github.com/bluebudgetz/gate/internal/rest/accounts"
+	"github.com/bluebudgetz/gate/internal/rest/transactions"
 )
 
 func main() {
@@ -68,10 +69,11 @@ func main() {
 
 	// Managers
 	accountsMgr := accounts.NewManager(mongoClient)
+	txMgr := transactions.NewManager(mongoClient)
 
 	// Create Chi router
 	router := infra.NewChiRouter(*cfg)
-	router.Route("/", rest.NewRoutes(accountsMgr))
+	router.Route("/", rest.NewRoutes(accountsMgr, txMgr))
 
 	// Start the HTTP server using our router
 	serviceServer := &http.Server{

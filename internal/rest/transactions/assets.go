@@ -1,0 +1,3 @@
+package transactions
+
+//go:generate go-bindata -o ./assets_gen.go -ignore ".*\\.go" -pkg transactions ./...
