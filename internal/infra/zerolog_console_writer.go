@@ -147,8 +147,8 @@ func (w consoleWriter) Write(p []byte) (int, error) {
 	buf.WriteByte('\n')
 
 	// Add error
-	if errString, ok := evt["error"]; ok {
-		if stackTrace, ok := evt["stack"]; ok {
+	if errString, ok := evt[zerolog.ErrorFieldName]; ok {
+		if stackTrace, ok := evt[zerolog.ErrorStackFieldName]; ok {
 			// If we have a stack, it's been marshalled by our own marshaller, which already prints the error itself
 			// So printing only the stack is sufficient
 			buf.WriteString(fmt.Sprintf("%s\n", stackTrace))
