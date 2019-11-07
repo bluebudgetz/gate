@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"io/ioutil"
 	"os"
@@ -31,6 +32,7 @@ type PubSubConfig struct {
 type PubSubPublishConfig struct {
 	Topic      string            `long:"topic" env:"TOPIC" value-name:"PATH" required:"true" description:"Topic to publish the message to. Must be in the form of '<project-id>/<topic-id>'"`
 	Attributes map[string]string `long:"attribute" short:"a" value-name:"VALUE" description:"Message attributes (can be specified multiple times.)"`
+	Body       string            `long:"body" short:"b" value-name:"FILE" description:"File to read the message from. If omitted, body is read from stdin."`
 }
 
 func main() {
@@ -138,9 +140,23 @@ func runPubSubPublish(_ *flags.Command, cfg PubSubPublishConfig) int {
 		}
 	}
 
-	msgText, err := ioutil.ReadAll(os.Stdin)
-	result := topic.Publish(ctx, &pubsub.Message{Data: msgText, Attributes: cfg.Attributes})
-	id, err := result.Get(ctx)
+	msg := &pubsub.Message{Attributes: cfg.Attributes}
+	if cfg.Body == "" {
+		body := new(bytes.Buffer)
+		if _, err := body.ReadFrom(os.Stdin); err != nil {
+			log.Error().Err(err).Msg("Failed reading message from stdin")
+			return ExitCodeInternalError
+		} else {
+			msg.Data = body.Bytes()
+		}
+	} else if body, err := ioutil.ReadFile(cfg.Body); err != nil {
+		log.Error().Err(err).Str("path", cfg.Body).Msg("Failed reading message from file")
+		return ExitCodeInternalError
+	} else {
+		msg.Data = body
+	}
+
+	id, err := topic.Publish(ctx, msg).Get(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed publishing message")
 		return ExitCodeInternalError
