@@ -71,14 +71,9 @@ func run() (exitCode int) {
 	}()
 
 	// Execute
-	cmd := parser.Active
-	if cmd == nil {
-		log.Error().Msg("Please specify a command, or pass '-h' for help.")
-		return ExitCodeBadConfig
-	}
-	switch cmd.Name {
+	switch parser.Active.Name {
 	case "pubsub":
-		return runPubSub(cmd, cfg.PubSub)
+		return runPubSub(parser.Active, cfg.PubSub)
 	default:
 		log.Error().Msg("Unknown command!")
 		return ExitCodeBadConfig
@@ -86,10 +81,6 @@ func run() (exitCode int) {
 }
 
 func runPubSub(cmd *flags.Command, cfg PubSubConfig) int {
-	if cmd.Active == nil {
-		log.Error().Msg("Please specify a command, or pass '-h' for help.")
-		return ExitCodeBadConfig
-	}
 	switch cmd.Active.Name {
 	case "publish":
 		return runPubSubPublish(cmd, cfg.Publish)
