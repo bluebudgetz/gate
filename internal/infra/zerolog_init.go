@@ -11,8 +11,6 @@ import (
 )
 
 func SetupLogging() {
-	logPrettyEnv := strings.ToLower(os.Getenv("LOG_PRETTY"))
-	logPretty := logPrettyEnv == "1" || logPrettyEnv == "y" || logPrettyEnv == "yes" || logPrettyEnv == "true"
 	zerolog.ErrorStackMarshaler = stackTraceMarshaller
 
 	switch os.Getenv("LOG_LEVEL") {
@@ -34,13 +32,23 @@ func SetupLogging() {
 		log.Fatal().Msg("log level must be one of: disabled, panic, fatal, error, warn, info or debug")
 	}
 
-	log.Logger = log.Logger.Hook(zerolog.HookFunc(threadIDHook))
-	if logPretty {
-		log.Logger = log.Output(newConsoleWriter()).With().Int("pid", os.Getpid()).Logger()
-	} else {
-		log.Logger = log.Logger.With().Str("svc", "gate").Logger()
+	if boolEnv("LOG_PRETTY") {
+		log.Logger = log.Output(newPrettyConsoleWriter())
 	}
-	log.Logger = log.Logger.With().CallerWithSkipFrameCount(2).Stack().Logger()
+	if boolEnv("LOG_PID") {
+		log.Logger = log.With().
+			Int("pid", os.Getpid()).
+			Logger().Hook(zerolog.HookFunc(threadIDHook))
+	}
+	if boolEnv("LOG_SVC") {
+		log.Logger = log.With().
+			Str("svc", "gate").
+			Logger()
+	}
+	log.Logger = log.Logger.With().
+		CallerWithSkipFrameCount(2).
+		Stack().
+		Logger()
 
 	glog.SetFlags(0)
 	glog.SetOutput(log.Logger)
@@ -49,4 +57,9 @@ func SetupLogging() {
 func threadIDHook(e *zerolog.Event, _ zerolog.Level, _ string) {
 	// Used by request logger
 	e.Int64("tid", tls.ID())
+}
+
+func boolEnv(key string) bool {
+	value := strings.ToLower(os.Getenv(key))
+	return value == "1" || value == "y" || value == "yes" || value == "true"
 }

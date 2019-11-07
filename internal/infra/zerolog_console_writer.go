@@ -47,22 +47,22 @@ const (
 type formatter func(interface{}) string
 
 // Parses the JSON input and writes it in an (optionally) colorized, human-friendly format to Out.
-type consoleWriter struct {
+type prettyConsoleWriter struct {
 	Out        io.Writer
 	NoColor    bool
 	TimeFormat string
 }
 
 // Creates a console writer
-func newConsoleWriter() io.Writer {
-	return consoleWriter{
+func newPrettyConsoleWriter() io.Writer {
+	return prettyConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: "15:04:05.000",
 	}
 }
 
 // Write transforms the JSON input with formatters and appends to w.Out.
-func (w consoleWriter) Write(p []byte) (int, error) {
+func (w prettyConsoleWriter) Write(p []byte) (int, error) {
 
 	var buf = consoleBufPool.Get().(*bytes.Buffer)
 	defer func() {
