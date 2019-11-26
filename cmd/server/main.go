@@ -2,38 +2,30 @@ package main
 
 import (
 	"context"
-	"fmt"
+	glog "log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-redis/redis"
+	"github.com/golangly/errors"
+	"github.com/golangly/log"
+	"github.com/golangly/webutil"
 	"github.com/jessevdk/go-flags"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/go-playground/validator.v9"
 
-	"github.com/bluebudgetz/gate/internal/infra"
 	"github.com/bluebudgetz/gate/internal/pubsub"
 	"github.com/bluebudgetz/gate/internal/rest"
-	"github.com/bluebudgetz/gate/internal/rest/accounts"
-	"github.com/bluebudgetz/gate/internal/rest/transactions"
-)
-
-const (
-	ExitCodeOK              = 0
-	ExitCodeBadConfig       = 1
-	ExitCodeInternalError   = 2
-	ExitCodeExternalService = 3
-	ExitCodeListen          = 4
 )
 
 type DatabaseConfig struct {
@@ -50,48 +42,84 @@ type MonitoringConfig struct {
 	MaxHeaderBytes    int           `long:"max-header-bytes" env:"MAX_HEADER_BYTES" default:"8192" description:"Maximum number of bytes to read for the request headers"`
 }
 
+type HTTPCORSConfig struct {
+	AllowOrigins     []string      `long:"allow-origin" env:"ALLOW_ORIGIN" value-name:"ORIGIN" default:"https://www.bluebudgetz.com:443" description:"Origin to allow requests from, e.g. http://my.server.com"`
+	AllowMethods     []string      `long:"allow-method" env:"ALLOW_METHOD" value-name:"METHOD" default:"HEAD, GET, POST, PATCH, PUT, DELETE, CONNECT, OPTIONS, TRACE" description:"Methods allowed in CORS requests"`
+	AllowHeaders     []string      `long:"allow-header" env:"ALLOW_HEADER" value-name:"HEADER" description:"Headers allowed in CORS requests"`
+	AllowCredentials bool          `long:"allow-credentials" env:"ALLOW_CREDENTIALS" description:"Whether to allow client code to access responses when credentials were sent in CORS requests"`
+	ExposeHeaders    []string      `long:"expose-header" env:"EXPOSE_HEADER" value-name:"HEADER" description:"Headers exposed to client browser code in CORS requests"`
+	MaxAge           time.Duration `long:"max-age" env:"MAX_AGE" value-name:"SECONDS" default:"30s" description:"How long (in seconds) can preflight responses be cached"`
+}
+
+type HTTPConfig struct {
+	Port              int            `long:"port" env:"PORT" value-name:"PORT" default:"3001" description:"HTTP port to listen on"`
+	CORS              HTTPCORSConfig `group:"CORS support" namespace:"cors" env-namespace:"CORS"`
+	BodyLimit         string         `long:"body-limit" env:"BODY_LIMIT" default:"2M" description:"Maximum allowed size for a request body, e.g. 500K, 2M, 1G, etc"`
+	GZipLevel         int            `long:"gzip-level" env:"GZIP_LEVEL" default:"-1" description:"HTTP GZip compression level"`
+	ReadTimeout       time.Duration  `long:"read-timeout" env:"READ_TIMEOUT" default:"5s" description:"Maximum number of seconds to read the entire request, including the body"`
+	ReadHeaderTimeout time.Duration  `long:"read-header-timeout" env:"READ_HEADER_TIMEOUT" default:"2s" description:"Maximum number of seconds to read the request headers"`
+	WriteTimeout      time.Duration  `long:"write-timeout" env:"WRITE_TIMEOUT" default:"30s" description:"Maximum number of seconds to write the response"`
+	IdleTimeout       time.Duration  `long:"idle-timeout" env:"IDLE_TIMEOUT" default:"30s" description:"Maximum number of seconds to let keep-alive connections to live"`
+	MaxHeaderBytes    int            `long:"max-header-bytes" env:"MAX_HEADER_BYTES" default:"8192" description:"Maximum number of bytes to read for the request headers"`
+}
+
 type Config struct {
 	Database   DatabaseConfig   `group:"Databases" namespace:"db" env-namespace:"DB"`
 	Monitoring MonitoringConfig `group:"Monitoring" namespace:"monitoring" env-namespace:"MONITORING"`
-	HTTP       infra.HTTPConfig `group:"HTTP server" namespace:"http" env-namespace:"HTTP"`
+	HTTP       HTTPConfig       `group:"HTTP server" namespace:"http" env-namespace:"HTTP"`
 	PubSub     pubsub.Config    `group:"Pub/Sub" namespace:"pubsub" env-namespace:"PUBSUB"`
 }
 
 func main() {
-	os.Exit(mainWithReturnCode())
-}
-
-func mainWithReturnCode() (exitCode int) {
 
 	// We must FIRST configure logging properly (pretty/JSON, stdout/stderr, etc)
-	infra.SetupLogging()
-
-	// Parse environment variables and/or command-line arguments, to form a Config object
-	cfg := Config{}
-	parser := flags.NewParser(&cfg, flags.HelpFlag|flags.PassDoubleDash)
-	parser.NamespaceDelimiter = "-"
-	parser.LongDescription = "Bluebudgetz API gateway. This is the API micro-service centralizing Bluebudgetz APIs."
-	if _, err := parser.Parse(); err != nil {
-		log.Error().Err(err).Msg("Failed loading configuration")
-		return ExitCodeBadConfig
-	}
-	log.Info().
-		Interface("config", cfg).
-		Interface("env", os.Environ()).
-		Interface("args", os.Args[1:]).
-		Msg("Configuration loaded")
+	log.Root = log.Root.With("svc", "gate")
+	glog.SetFlags(0)
+	glog.SetOutput(log.Root.Writer())
 
 	// Defer a panic handler
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error().
-				Err(fmt.Errorf("SYSTEM PANIC: %v", r)).
-				Str(zerolog.ErrorStackFieldName, string(debug.Stack())).
-				Interface("recovered", r).
-				Msg("System error")
-			exitCode = ExitCodeInternalError
+			log.WithPanic(r).Fatal("System panic!")
 		}
 	}()
+
+	if err := mainWithReturnCode(); err != nil {
+		log.WithErr(err).Error(err.Error())
+		switch exitCode := errors.LookupTag(err, "exitCode").(type) {
+		case int:
+			os.Exit(exitCode)
+		default:
+			os.Exit(1)
+		}
+	} else {
+		os.Exit(0)
+	}
+}
+
+func mainWithReturnCode() (err error) {
+
+	// Parse environment variables and/or command-line arguments, to form a Config object
+	cfg := Config{}
+	parser := flags.NewParser(&cfg, flags.HelpFlag|flags.PrintErrors|flags.PassDoubleDash)
+	parser.NamespaceDelimiter = "-"
+	parser.LongDescription = "Bluebudgetz API gateway. This is the API micro-service centralizing Bluebudgetz APIs."
+	if _, err := parser.Parse(); err != nil {
+		if parseErr, ok := err.(*flags.Error); ok {
+			if parseErr.Type == flags.ErrHelp {
+				return nil
+			}
+		}
+		return err
+	}
+
+	// Print configuration for reference & debugging
+	if skipValue, ok := os.LookupEnv("SKIP_PRINT_CONFIG"); !ok || (skipValue != "1" && skipValue != "y" && skipValue != "yes" && skipValue != "true") {
+		log.With("config", cfg).
+			With("env", os.Environ()).
+			With("args", os.Args[1:]).
+			Info("Configuration loaded")
+	}
 
 	// Context for bootstrapping
 	startupCtx, cancelStartupCtx := context.WithTimeout(context.Background(), 30*time.Second)
@@ -99,24 +127,21 @@ func mainWithReturnCode() (exitCode int) {
 	// Connect to MongoDB
 	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(cfg.Database.MongoURI))
 	if err != nil {
-		log.Error().Err(err).Msg("Failed creating MongoDB client")
-		return ExitCodeExternalService
+		return errors.Wrap(err, "failed creating MongoDB client")
 	} else if err := mongoClient.Connect(startupCtx); err != nil {
-		log.Error().Err(err).Msg("Failed connecting MongoDB client")
-		return ExitCodeExternalService
+		return errors.Wrap(err, "failed connecting MongoDB client")
 	}
 
 	// Connect to Redis
 	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Database.RedisURI})
 
-	// This main will later block until a value is sent to the "quitChan" channel.
-	// Value will be sent when:
-	// - An OS signal like SIGTERM is sent to the process
-	// - When one of the HTTP servers fails
-	quitChan := make(chan int, 1)
-	quitting := false
+	// Create the transactions Pub/Sub consumer
+	txPubSubConsumer, err := pubsub.NewTransactionProcessor(redisClient, cfg.PubSub)
+	if err != nil {
+		return errors.Wrap(err, "failed creating transactions pub/sub consumer")
+	}
 
-	// Create & start the monitoring HTTP server. When it stops, send an event to the "quitChan" channel to stop the app
+	// Create & start the monitoring HTTP server
 	monitoringMux := http.NewServeMux()
 	monitoringMux.Handle("/metrics", promhttp.Handler())
 	monitoringServer := &http.Server{
@@ -128,18 +153,33 @@ func mainWithReturnCode() (exitCode int) {
 		IdleTimeout:       cfg.Monitoring.IdleTimeout,
 		MaxHeaderBytes:    cfg.Monitoring.MaxHeaderBytes,
 	}
-	go func() {
-		if err := monitoringServer.ListenAndServe(); err != nil && err != http.ErrServerClosed && !quitting {
-			log.Warn().Err(err).Msg("Monitoring HTTP server failed")
-			quitChan <- ExitCodeListen
-		} else {
-			quitChan <- ExitCodeOK
-		}
-	}()
 
-	// Create & start the service HTTP server. When it stops, send an event to the "quitChan" channel to stop the app
-	router := infra.NewChiRouter(cfg.HTTP)
-	router.Route("/", rest.NewRoutes(accounts.NewManager(mongoClient), transactions.NewManager(mongoClient)))
+	// Create the HTTP service router
+	router := chi.NewRouter()
+	router.Use(
+		middleware.SetHeader("Server", "bluebudgetz/gate"),
+		middleware.Heartbeat("/health"),
+		middleware.RealIP,
+		webutil.RequestLogger,
+		webutil.Metrics,
+		webutil.RequestID,
+		middleware.NoCache,
+		cors.New(cors.Options{
+			AllowedOrigins:   cfg.HTTP.CORS.AllowOrigins,
+			AllowedMethods:   cfg.HTTP.CORS.AllowMethods,
+			AllowedHeaders:   cfg.HTTP.CORS.AllowHeaders,
+			ExposedHeaders:   cfg.HTTP.CORS.ExposeHeaders,
+			AllowCredentials: cfg.HTTP.CORS.AllowCredentials,
+			MaxAge:           int(cfg.HTTP.CORS.MaxAge.Seconds()), // 300 is the maximum value not ignored by any of major browsers
+		}).Handler,
+		middleware.GetHead,
+		middleware.RedirectSlashes,
+		middleware.Compress(cfg.HTTP.GZipLevel),
+		middleware.Timeout(30*time.Second),
+	)
+	router.Route("/", rest.NewRoutes(mongoClient))
+
+	// Create the service HTTP server
 	serviceServer := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.HTTP.Port),
 		Handler:           router,
@@ -155,29 +195,46 @@ func mainWithReturnCode() (exitCode int) {
 			return ctx
 		},
 	}
+
+	// If we've reached this far, we can cancel the startup context
+	cancelStartupCtx()
+	cancelStartupCtx = nil
+
+	// Define a channel signaling the termination of the server. The value is an error, but can be nil, and represents
+	// the reason the server terminates. In essence, an error or nil is sent on:
+	//   - An OS signal like SIGTERM is sent to the process
+	//   - The monitoring or service HTTP servers fail
+	//   - One of the Pub/Sub consumers fail
+	// In any of these cases, an error is sent to this channel, and this "main" will quit.
+	quitChan := make(chan error, 1)
+
+	// This bool is turned on when a shutdown initiates. Allows ignoring subsequent errors after shutdown has initiated
+	quitting := false
+
+	// Start the monitoring HTTP server goroutine
 	go func() {
-		if err := serviceServer.ListenAndServe(); err != nil && err != http.ErrServerClosed && !quitting {
-			log.Warn().Err(err).Msg("Service HTTP server failed")
-			quitChan <- ExitCodeListen
+		if err := monitoringServer.ListenAndServe(); err != nil && err != http.ErrServerClosed && !quitting {
+			quitChan <- errors.Wrap(err, "Monitoring HTTP server failed")
 		} else {
-			quitChan <- ExitCodeOK
+			quitChan <- nil
 		}
 	}()
 
-	// Create & start the Pub/Sub transactions consumer; when it stops, send an event to the "quitChan" channel to stop
-	// the entire app
-	txPubSubConsumer, shutdownTxPubSubConsumer, err := pubsub.NewTransactionProcessor(redisClient, cfg.PubSub)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed creating transactions pub/sub consumer")
-		return ExitCodeListen
-	}
-	defer shutdownTxPubSubConsumer(context.Background())
+	// Start the service HTTP server goroutine
+	go func() {
+		if err := serviceServer.ListenAndServe(); err != nil && err != http.ErrServerClosed && !quitting {
+			quitChan <- errors.Wrap(err, "Service HTTP server failed")
+		} else {
+			quitChan <- nil
+		}
+	}()
+
+	// Start the transactions pub/sub consumer
 	go func() {
 		if err := txPubSubConsumer.Run(); err != nil && !quitting {
-			log.Warn().Err(err).Msg("Transactions Pub/Sub consumer failed")
-			quitChan <- ExitCodeListen
+			quitChan <- errors.Wrap(err, "Transactions Pub/Sub consumer failed")
 		} else {
-			quitChan <- ExitCodeOK
+			quitChan <- nil
 		}
 	}()
 
@@ -192,19 +249,14 @@ func mainWithReturnCode() (exitCode int) {
 	)
 	go func() {
 		sig := <-shutdownChan
-		log.Info().Str("signal", sig.String()).Msg("Received OS signal")
+		log.With("signal", sig.String()).Info("Received OS signal")
 		quitting = true
-		quitChan <- 0
+		quitChan <- nil
 	}()
-
-	// If we've reached this far, we can cancel the startup context
-	cancelStartupCtx()
 
 	// Now let's wait until we are told to quit. This can happen through one of the following:
 	// - An OS signalling us to stop (e.g. CTRL+C)
 	// - One of the HTTP servers failing
 	// - One of the Pub/Sub consumers failing
-	exitCode = <-quitChan
-	log.Info().Int("exitCode", exitCode).Msg("Done")
-	return
+	return <-quitChan
 }

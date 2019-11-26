@@ -79,15 +79,3 @@ func MustDateTime(value interface{}) time.Time {
 	}
 	return *dateTime
 }
-
-func OptionalString(value interface{}) *string {
-	if value == nil {
-		return nil
-	} else if s, ok := value.(string); ok {
-		return &s
-	} else if sp, ok := value.(*string); ok {
-		return sp
-	} else {
-		return nil
-	}
-}

@@ -3,20 +3,23 @@ package pubsub
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-redis/redis"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/golangly/errors"
+
+	"github.com/golangly/log"
 )
 
 type (
 	MessageProcessor func(m *pubsub.Message) error
 
 	Consumer interface {
+		io.Closer
 		Run() error
 	}
 
@@ -32,51 +35,53 @@ type (
 	}
 )
 
-func newConsumer(redisClient *redis.Client, processor MessageProcessor, maxMessageFailures uint8, deadLetterboxTopicName, subscriptionPath string) (Consumer, func(context.Context), error) {
+func newConsumer(redisClient *redis.Client, processor MessageProcessor, maxMessageFailures uint8, deadLetterboxTopicName, subscriptionPath string) (Consumer, error) {
 	if processor == nil {
-		return nil, nil, errors.New("message processor is required")
+		return nil, errors.New("message processor is required")
 	} else if subscriptionPath == "" {
-		return nil, nil, errors.New("subscription path is required")
+		return nil, errors.New("subscription path is required")
 	}
 
 	subTokens := strings.Split(subscriptionPath, "/")
 	if len(subTokens) != 3 {
-		return nil, nil, errors.New("invalid subscription path: " + subscriptionPath)
+		return nil, errors.Newf("invalid subscription path").AddTag("subscriptionPath", subscriptionPath)
 	}
 
 	projectID := subTokens[0]
 	topicName := subTokens[1]
 	subscriptionName := subTokens[2]
 	if pubsubClient, err := pubsub.NewClient(context.Background(), projectID); err != nil {
-		return nil, nil, errors.New("failed creating Pub/Sub client")
+		return nil, errors.Wrapf(err, "failed creating Pub/Sub client").AddTag("projectID", projectID)
 	} else {
 		return &consumer{
-				processor,
-				pubsubClient,
-				redisClient,
-				maxMessageFailures,
-				deadLetterboxTopicName,
-				projectID,
-				topicName,
-				subscriptionName,
-			}, func(ctx context.Context) {
-				if err := pubsubClient.Close(); err != nil {
-					log.Warn().Err(err).Msg("Failed closing Pub/Sub client")
-				}
-			}, nil
+			processor,
+			pubsubClient,
+			redisClient,
+			maxMessageFailures,
+			deadLetterboxTopicName,
+			projectID,
+			topicName,
+			subscriptionName,
+		}, nil
 	}
 }
+
+func (p *consumer) Close() error { return p.pubsubClient.Close() }
 
 func (p *consumer) getOrCreateTopic(ctx context.Context, name string) (*pubsub.Topic, error) {
 	topic := p.pubsubClient.Topic(name)
 	if exists, err := topic.Exists(ctx); err != nil {
-		return nil, errors.Wrapf(err, "failed checking if topic '%s' exists", name)
+		return nil, errors.Wrap(err, "failed checking if topic exists").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", name)
 
 	} else if exists {
 		return topic, nil
 
 	} else if topic, err := p.pubsubClient.CreateTopic(ctx, name); err != nil {
-		return nil, errors.Wrapf(err, "failed creating topic '%s'", name)
+		return nil, errors.Wrap(err, "failed creating topic").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", name)
 
 	} else {
 		return topic, nil
@@ -84,25 +89,49 @@ func (p *consumer) getOrCreateTopic(ctx context.Context, name string) (*pubsub.T
 }
 
 func (p *consumer) getOrCreateSubscription(ctx context.Context, topicName string, subscriptionName string) (*pubsub.Topic, *pubsub.Subscription, error) {
+	topic, err := p.getOrCreateTopic(ctx, topicName)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed getting subscription").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", topicName).
+			AddTag("subscription", subscriptionName)
+	}
+
 	subscription := p.pubsubClient.Subscription(subscriptionName)
-	if exists, err := subscription.Exists(ctx); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed checking if subscription '%s' exists", subscriptionName)
+	exists, err := subscription.Exists(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed checking if subscription exists").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", topicName).
+			AddTag("subscription", subscriptionName)
+	}
 
-	} else if exists {
-		if subscriptionConfig, err := subscription.Config(ctx); err != nil {
-			return nil, nil, errors.Wrapf(err, "failed fetching configuration of subscription '%s'", subscriptionName)
-		} else {
-			return subscriptionConfig.Topic, subscription, nil
+	if !exists {
+		subscription, err = p.pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{Topic: topic})
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "failed creating subscription").
+				AddTag("projectID", p.projectID).
+				AddTag("topic", topicName).
+				AddTag("subscription", subscriptionName)
 		}
+	}
 
-	} else if topic, err := p.getOrCreateTopic(ctx, topicName); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed getting topic '%s' for subscription '%s'", topicName, subscriptionName)
+	subscriptionConfig, err := subscription.Config(ctx)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed getting subscription configuration").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", topicName).
+			AddTag("subscription", subscriptionName)
+	}
 
-	} else if subscription, err = p.pubsubClient.CreateSubscription(ctx, subscriptionName, pubsub.SubscriptionConfig{Topic: topic}); err != nil {
-		return nil, nil, errors.Wrapf(err, "failed creating subscription '%s' in topic '%s'", subscriptionName, topicName)
-
+	if subscriptionConfig.Topic.ID() != topicName {
+		return nil, nil, errors.Wrap(err, "subscription belongs to wrong topic").
+			AddTag("projectID", p.projectID).
+			AddTag("topicFound", subscriptionConfig.Topic.ID()).
+			AddTag("topicExpected", topicName).
+			AddTag("subscription", subscriptionName)
 	} else {
-		return topic, subscription, nil
+		return subscriptionConfig.Topic, subscription, nil
 	}
 }
 
@@ -110,9 +139,21 @@ func (p *consumer) increaseMessageFailureCounter(messageID string) (uint8, error
 	key := fmt.Sprintf("%s:%s:%s:%s", p.projectID, p.topicName, p.subscriptionName, messageID)
 	count, err := p.redisClient.Incr(key).Result()
 	if err != nil {
-		return math.MaxUint8, err
+		return math.MaxUint8, errors.Wrap(err, "failed increasing message failure counter").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", p.topicName).
+			AddTag("subscription", p.subscriptionName).
+			AddTag("msgID", messageID)
 	}
-	p.redisClient.Expire(key, time.Minute*1) // expire failures counter one minute from last failure
+
+	// expire failures counter one minute from last failure
+	if result := p.redisClient.Expire(key, time.Minute*1); result.Err() != nil {
+		log.WithErr(err).
+			With("projectID", p.projectID).
+			With("topic", p.projectID).
+			With("subscription", p.projectID).
+			Warn("Failed expiring failure counter for a Pub/Sub message - this might result in more messages sent to the dead letterbox.")
+	}
 	return uint8(count), nil
 }
 
@@ -122,47 +163,47 @@ func (p *consumer) Run() error {
 	// Lookup a reference to the dead-letter topic
 	deadLetterTopic, err := p.getOrCreateTopic(ctx, p.deadLetterboxTopicName)
 	if err != nil {
-		return err
-	} else {
-		defer deadLetterTopic.Stop()
+		return errors.Wrap(err, "failed getting dead letterbox topic").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", p.deadLetterboxTopicName)
 	}
+	defer deadLetterTopic.Stop()
 
 	// Lookup or create the subscription
 	topic, subscription, err := p.getOrCreateSubscription(ctx, p.topicName, p.subscriptionName)
 	if err != nil {
-		return err
-	} else {
-		defer topic.Stop()
+		return errors.Wrap(err, "failed getting consumer's subscription").
+			AddTag("projectID", p.projectID).
+			AddTag("topic", p.topicName).
+			AddTag("subscription", p.subscriptionName)
 	}
+	defer topic.Stop()
 
 	// Subscribe and start receive messages
-	log.Info().
-		Str("projectID", p.projectID).
-		Str("topic", p.topicName).
-		Str("subscription", p.subscriptionName).
-		Msg("Subscribing to Pub/Sub topic")
+	log.With("projectID", p.projectID).
+		With("topic", p.topicName).
+		With("subscription", p.subscriptionName).
+		Info("Subscribing to Pub/Sub topic")
 	return subscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
-		info := map[string]interface{}{
-			"msgID":        m.ID,
-			"topic":        p.topicName,
-			"subscription": p.subscriptionName,
-			"attributes":   m.Attributes,
-		}
-		logger := log.With().Fields(info).Logger()
+		logger := log.
+			With("topic", p.topicName).
+			With("subscription", p.subscriptionName).
+			With("msgID", m.ID).
+			With("msgAttributes", m.Attributes)
 		if err := p.processor(m); err != nil {
-			logger.Error().Err(err).Msg("Failed processing message")
+			logger.WithErr(err).Error("Failed processing message")
 
 			// Message processing failed:
 			//  - increase failure count for this message ID
 			//  - if number of failures reached the maximum allowed number of failures, stop & send to dead-letter box
 			//  - otherwise, NAck it to try again
 			if failures, err := p.increaseMessageFailureCounter(m.ID); err != nil {
-				logger.Warn().Err(err).Msg("Failed increasing failure count for message")
+				logger.WithErr(err).Warn("Failed increasing failure count for message")
 				m.Nack()
 			} else if failures < p.maxMessageFailures {
 				m.Nack()
 			} else {
-				logger.Warn().Uint8("failures", failures).Err(err).Msg("Sending message to dead-letter topic")
+				logger.With("failures", failures).WithErr(err).Warn("Sending message to dead-letter topic")
 				attributes := make(map[string]string, 0)
 				attributes["originalTopic"] = p.topicName
 				attributes["originalSubscription"] = p.subscriptionName
@@ -175,7 +216,7 @@ func (p *consumer) Run() error {
 				m.Ack()
 			}
 		} else {
-			logger.Info().Str("msgID", m.ID).Msg("Processed message")
+			logger.Info("Processed message")
 			m.Ack()
 		}
 	})

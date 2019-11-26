@@ -4,21 +4,14 @@ import (
 	"bytes"
 	"context"
 	"io/ioutil"
+	glog "log"
 	"os"
-	"runtime/debug"
 	"strings"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/golangly/errors"
+	"github.com/golangly/log"
 	"github.com/jessevdk/go-flags"
-	"github.com/rs/zerolog/log"
-
-	"github.com/bluebudgetz/gate/internal/infra"
-)
-
-const (
-	ExitCodeOK            = 0
-	ExitCodeBadConfig     = 1
-	ExitCodeInternalError = 2
 )
 
 type CLIConfig struct {
@@ -36,17 +29,33 @@ type PubSubPublishConfig struct {
 }
 
 func main() {
-	os.Exit(run())
-}
-
-func run() (exitCode int) {
-	if err := os.Setenv("LOG_PRETTY", "1"); err != nil {
-		log.Error().Err(err).Msg("Failed setting 'LOG_PRETTY' environment variable")
-		return ExitCodeInternalError
-	}
 
 	// We must FIRST configure logging properly (pretty/JSON, stdout/stderr, etc)
-	infra.SetupLogging()
+	log.Printer = log.PrettyPrinter
+	glog.SetFlags(0)
+	glog.SetOutput(log.Root.Writer())
+
+	// Defer a panic handler
+	defer func() {
+		if r := recover(); r != nil {
+			log.WithPanic(r).Fatal("System panic!")
+		}
+	}()
+
+	if err := mainWithReturnCode(); err != nil {
+		log.WithErr(err).Error(err.Error())
+		switch exitCode := errors.LookupTag(err, "exitCode").(type) {
+		case int:
+			os.Exit(exitCode)
+		default:
+			os.Exit(1)
+		}
+	} else {
+		os.Exit(0)
+	}
+}
+
+func mainWithReturnCode() error {
 
 	// Parse environment variables and/or command-line arguments, to form a Config object
 	cfg := CLIConfig{}
@@ -54,80 +63,59 @@ func run() (exitCode int) {
 	parser.NamespaceDelimiter = "-"
 	parser.LongDescription = "Bluebudgetz CLI."
 	if _, err := parser.Parse(); err != nil {
-		if parseErr, ok := err.(*flags.Error); ok {
-			log.Error().Msg(parseErr.Error())
-		} else {
-			log.Error().Err(err).Msg("Failed loading configuration")
-		}
-		return ExitCodeBadConfig
+		return errors.Wrap(err, "failed loading configuration")
 	}
-
-	// Defer a panic handler
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error().Str("stack", string(debug.Stack())).Interface("recovered", r).Msg("SYSTEM PANIC!")
-			exitCode = ExitCodeInternalError
-		}
-	}()
 
 	// Execute
 	switch parser.Active.Name {
 	case "pubsub":
 		return runPubSub(parser.Active, cfg.PubSub)
 	default:
-		log.Error().Msg("Unknown command!")
-		return ExitCodeBadConfig
+		return errors.Newf("unknown command: %s", parser.Active.Name)
 	}
 }
 
-func runPubSub(cmd *flags.Command, cfg PubSubConfig) int {
+func runPubSub(cmd *flags.Command, cfg PubSubConfig) error {
 	switch cmd.Active.Name {
 	case "publish":
 		return runPubSubPublish(cmd, cfg.Publish)
 	default:
-		log.Error().Msg("Unknown command!")
-		return ExitCodeBadConfig
+		return errors.Newf("unknown command: %s", cmd.Active.Name)
 	}
 }
 
-func runPubSubPublish(_ *flags.Command, cfg PubSubPublishConfig) int {
+func runPubSubPublish(_ *flags.Command, cfg PubSubPublishConfig) error {
 	ctx := context.Background()
 
 	topicTokens := strings.Split(cfg.Topic, "/")
 	if len(topicTokens) != 2 {
-		log.Error().Msg("Please specify topic in the format of '<project-id>/<topic-name>'")
-		return ExitCodeBadConfig
+		return errors.New("please specify topic in the format of '<project-id>/<topic-name>'")
 	}
 
 	projectID := topicTokens[0]
 	if projectID == "" {
-		log.Error().Msg("Please specify topic in the format of '<project-id>/<topic-name>'")
-		return ExitCodeBadConfig
+		return errors.New("please specify topic in the format of '<project-id>/<topic-name>'")
 	}
 
 	topicName := topicTokens[1]
 	if topicName == "" {
-		log.Error().Msg("Please specify topic in the format of '<project-id>/<topic-name>'")
-		return ExitCodeBadConfig
+		return errors.New("please specify topic in the format of '<project-id>/<topic-name>'")
 	}
 
 	pubsubClient, err := pubsub.NewClient(context.Background(), projectID)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed creating Pub/Sub client")
-		return ExitCodeInternalError
+		return errors.Wrap(err, "failed creating Pub/Sub client")
 	}
 	defer pubsubClient.Close()
 
 	topic := pubsubClient.Topic(topicName)
 	exists, err := topic.Exists(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed checking if topic exists")
-		return ExitCodeInternalError
+		return errors.Wrap(err, "failed checking if topic exists")
 	} else if !exists {
 		topic, err = pubsubClient.CreateTopic(ctx, topicName)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed creating topic")
-			return ExitCodeInternalError
+			return errors.Wrap(err, "failed creating topic")
 		}
 	}
 
@@ -135,24 +123,21 @@ func runPubSubPublish(_ *flags.Command, cfg PubSubPublishConfig) int {
 	if cfg.Body == "" {
 		body := new(bytes.Buffer)
 		if _, err := body.ReadFrom(os.Stdin); err != nil {
-			log.Error().Err(err).Msg("Failed reading message from stdin")
-			return ExitCodeInternalError
+			return errors.Wrap(err, "failed reading message from stdin")
 		} else {
 			msg.Data = body.Bytes()
 		}
 	} else if body, err := ioutil.ReadFile(cfg.Body); err != nil {
-		log.Error().Err(err).Str("path", cfg.Body).Msg("Failed reading message from file")
-		return ExitCodeInternalError
+		return errors.Wrapf(err, "failed reading message from file: %s", cfg.Body)
 	} else {
 		msg.Data = body
 	}
 
 	id, err := topic.Publish(ctx, msg).Get(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed publishing message")
-		return ExitCodeInternalError
+		return errors.Wrap(err, "failed publishing message")
 	}
 
-	log.Info().Str("msgID", id).Msgf("Published message!")
-	return ExitCodeOK
+	log.With("msgID", id).Info("Published message!")
+	return nil
 }

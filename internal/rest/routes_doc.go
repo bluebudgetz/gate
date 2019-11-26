@@ -5,8 +5,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/docgen"
-
-	"github.com/bluebudgetz/gate/internal/util"
+	"github.com/golangly/webutil"
 )
 
 const docProjectPath = "github.com/bluebudgetz/gate"
@@ -16,7 +15,7 @@ var docOfferedContentTypes = []string{"text/markdown", "application/json", "text
 
 func routesDoc(router chi.Router) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		switch contentType := util.NegotiateContentType(r.Header.Get("Accept"), docOfferedContentTypes, ""); contentType {
+		switch contentType := webutil.NegotiateContentType(r.Header.Get("Accept"), docOfferedContentTypes, ""); contentType {
 		case "text/markdown", "text/plain":
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", contentType)
