@@ -23,11 +23,14 @@ jobs:
       run: go vet ./...
 
     - name: Formatting
-      run: test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
+      run: |
+        find . -name assets_gen.go -execdir mv '{}' '.{}' ';'
+        test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
+        git clean -fd && git checkout .
 
     - name: Build
       run: go build -o bin/gate ./cmd/server/main.go
-      
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v1.0.0
       with:
