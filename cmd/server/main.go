@@ -123,6 +123,7 @@ func mainWithReturnCode() (err error) {
 
 	// Context for bootstrapping
 	startupCtx, cancelStartupCtx := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelStartupCtx()
 
 	// Connect to MongoDB
 	mongoClient, err := mongo.NewClient(options.Client().ApplyURI(cfg.Database.MongoURI))
