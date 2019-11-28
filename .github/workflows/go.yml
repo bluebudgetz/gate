@@ -1,4 +1,4 @@
-name: Go
+name: CI
 on: [push]
 jobs:
 
@@ -28,11 +28,5 @@ jobs:
         test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
         git clean -fd && git checkout .
 
-    - name: Build
-      run: go build -o bin/gate ./cmd/server/main.go
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v1.0.0
-      with:
-        name: gate
-        path: bin/gate
+    - name: Build Image
+      run: docker build -f build/Dockerfile docker.pkg.github.com/${GITHUB_REPOSITORY}:${GITHUB_SHA}
