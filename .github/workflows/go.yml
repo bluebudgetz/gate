@@ -29,4 +29,7 @@ jobs:
         git clean -fd && git checkout .
 
     - name: Build Image
-      run: docker build -f build/Dockerfile docker.pkg.github.com/${GITHUB_REPOSITORY}:${GITHUB_SHA}
+      run: docker build --file=build/Dockerfile --tag=docker.pkg.github.com/${GITHUB_REPOSITORY}:${GITHUB_SHA} .
+
+    - name: Push Image
+      run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}:${GITHUB_SHA}
