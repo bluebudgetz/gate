@@ -31,7 +31,7 @@ jobs:
       run: docker login docker.pkg.github.com -u arikkfir -p ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build Image
-      run: docker build --file=build/Dockerfile --tag=docker.pkg.github.com/${GITHUB_REPOSITORY}/service:${GITHUB_SHA} .
+      run: docker build --file=build/Dockerfile --tag=docker.pkg.github.com/${GITHUB_REPOSITORY}/${GITHUB_REPOSITORY}:${GITHUB_SHA} .
 
     - name: Push Image
-      run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/service:${GITHUB_SHA}
+      run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/${GITHUB_REPOSITORY}:${GITHUB_SHA}
