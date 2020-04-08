@@ -180,10 +180,6 @@ func (p *consumer) Run() error {
 	defer topic.Stop()
 
 	// Subscribe and start receive messages
-	log.With("projectID", p.projectID).
-		With("topic", p.topicName).
-		With("subscription", p.subscriptionName).
-		Info("Subscribing to Pub/Sub topic")
 	return subscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		logger := log.
 			With("topic", p.topicName).
