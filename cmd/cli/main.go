@@ -55,6 +55,8 @@ func main() {
 	}
 }
 
+// Runs the program and returns an error, potentially with an exit code attached to it.
+// It's critical that the error is a golangly error - due to the way it's formatted.
 func mainWithReturnCode() error {
 
 	// Parse environment variables and/or command-line arguments, to form a Config object
@@ -63,7 +65,12 @@ func mainWithReturnCode() error {
 	parser.NamespaceDelimiter = "-"
 	parser.LongDescription = "Bluebudgetz CLI."
 	if _, err := parser.Parse(); err != nil {
-		return errors.Wrap(err, "failed loading configuration")
+		if parseErr, ok := err.(*flags.Error); ok {
+			if parseErr.Type == flags.ErrHelp {
+				return nil
+			}
+		}
+		return errors.Wrap(err, err.Error())
 	}
 
 	// Execute
