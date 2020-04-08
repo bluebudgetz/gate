@@ -13,6 +13,8 @@ require (
 	github.com/golangly/log v0.2.0
 	github.com/golangly/webutil v0.2.0
 	github.com/jessevdk/go-flags v1.4.1-0.20181221193153-c0795c8afcf4
+	github.com/neo4j-drivers/gobolt v1.7.4 // indirect
+	github.com/neo4j/neo4j-go-driver v1.7.4
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/prometheus/client_golang v1.2.1

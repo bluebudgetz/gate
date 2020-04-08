@@ -12,6 +12,12 @@ Bluebudgetz API gateway.
 
 Please read the [Code of Conduct](.github/CODE_OF_CONDUCT.md) & [Contributing](.github/CONTRIBUTING.md) documents.
 
+## Development environment
+
+If you're on macOS:
+
+* `brew install michael-simons/homebrew-seabolt/seabolt` (michael-simons/homebrew-seabolt)
+
 ## License
 
 [GNUv3](./LICENSE)
