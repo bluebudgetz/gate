@@ -89,8 +89,23 @@ func DeleteNode(w http.ResponseWriter, r *http.Request, deleteQuery string, para
 		webutil.RenderWithStatusCode(w, r, http.StatusNoContent, nil)
 	} else {
 		webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError,
-			errors.New("invalid amount of transactions deleted").
-				AddTag("deleted", summary.Counters().NodesDeleted()),
+			errors.New("too many objects deleted").AddTag("deleted", summary.Counters().NodesDeleted()),
+		)
+	}
+}
+
+func DeleteRelationship(w http.ResponseWriter, r *http.Request, deleteQuery string, params map[string]interface{}) {
+	if result, err := services.GetNeo4jSession(r.Context()).Run(deleteQuery, params); err != nil {
+		webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, err)
+	} else if summary, err := result.Summary(); err != nil {
+		webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, err)
+	} else if summary.Counters().RelationshipsDeleted() == 0 {
+		webutil.RenderWithStatusCode(w, r, http.StatusNotFound, nil)
+	} else if summary.Counters().RelationshipsDeleted() == 1 {
+		webutil.RenderWithStatusCode(w, r, http.StatusNoContent, nil)
+	} else {
+		webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError,
+			errors.New("too many objects deleted").AddTag("deleted", summary.Counters().RelationshipsDeleted()),
 		)
 	}
 }

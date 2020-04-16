@@ -18,7 +18,7 @@ func DeleteTransaction() http.HandlerFunc {
 		if err := webutil.Bind(r, &req); err != nil {
 			webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, err)
 		} else {
-			DeleteNode(w, r, deleteTxQuery, map[string]interface{}{"id": req.ID})
+			DeleteRelationship(w, r, deleteTxQuery, map[string]interface{}{"id": req.ID})
 		}
 	}
 }
