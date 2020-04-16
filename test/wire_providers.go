@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/golangly/errors"
@@ -27,22 +28,62 @@ func NewConfig() (config.Config, error) {
 }
 
 type testTx struct {
-	srcID string
-	dstID string
-	id string
-	amount float64
-	issuedOn time.Time
-	comment string
+	srcID    string
+	dstID    string
+	id       string
+	amount   float64
+	comment  string
 }
 
 var txList = []testTx{
 	{
-		srcID:    "company",
-		dstID:    "bankAccount",
-		id:       "salary-2020-01",
-		amount:   10000,
-		issuedOn: time.Date(2020, 1, 1, 0, 0, 0, 0, time.Local),
-		comment:  "Salary for January 2020",
+		srcID:   "company",
+		dstID:   "bankAccount",
+		id:      "salary",
+		amount:  10000,
+		comment: "Salary",
+	},
+	{
+		srcID:   "carLoan",
+		dstID:   "bank",
+		id:      "carLoan",
+		amount:  250,
+		comment: "Car loan installment",
+	},
+	{
+		srcID:   "renovationsLoan",
+		dstID:   "bank",
+		id:      "renovationsLoan",
+		amount:  350,
+		comment: "Renovations loan installment",
+	},
+	{
+		srcID:   "homeMortgage",
+		dstID:   "bank",
+		id:      "homeMortgage",
+		amount:  2000,
+		comment: "Home mortgage installment",
+	},
+	{
+		srcID:   "officeMortgage",
+		dstID:   "bank",
+		id:      "officeMortgage",
+		amount:  4000,
+		comment: "Office mortgage installment",
+	},
+	{
+		srcID:   "lifeInsurance",
+		dstID:   "aig",
+		id:      "lifeInsurance",
+		amount:  185,
+		comment: "Life insurance",
+	},
+	{
+		srcID:   "healthInsurance",
+		dstID:   "aig",
+		id:      "healthInsurance",
+		amount:  215,
+		comment: "Health insurance",
 	},
 }
 
@@ -74,34 +115,39 @@ func NewNeo4jDriver() (neo4j.Driver, func(), error) {
 		return nil, cleanup, errors.Wrap(err, "result error")
 	} else if summary, err := result.Summary(); err != nil {
 		return nil, cleanup, errors.Wrap(err, "result summary error")
-	} else if summary.Counters().NodesCreated() > 0 {
-		return nil, cleanup, errors.Wrap(err, "nodes should have been created")
+	} else if summary.Counters().NodesCreated() <= 0 {
+		return nil, cleanup, errors.New("nodes should have been created")
 	} else if summary.Counters().RelationshipsCreated() <= 0 {
-		return nil, cleanup, errors.Wrap(err, "relationships should not have been created")
+		return nil, cleanup, errors.New("relationships should have been created")
 	}
 
 	// Populate new data
 	log.Info("Creating transactions")
-	for _, tx := range txList {
-		if result, err := session.Run(string(MustAsset("neo4j-create-tx.cyp")), map[string]interface{}{
-			"srcId": tx.srcID,
-			"dstId": tx.dstID,
-			"id": tx.id,
-			"amount": tx.amount,
-			"issuedOn": tx.issuedOn,
-			"comment": tx.comment,
-		}); err != nil {
-			return nil, cleanup, errors.Wrap(err, "failed populating transactions")
-		} else if err := result.Err(); err != nil {
-			return nil, cleanup, errors.Wrap(err, "result error")
-		} else if summary, err := result.Summary(); err != nil {
-			return nil, cleanup, errors.Wrap(err, "result summary error")
-		} else if summary.Counters().NodesCreated() > 0 {
-			return nil, cleanup, errors.Wrap(err, "nodes should not have been created")
-		} else if summary.Counters().RelationshipsCreated() <= 0 {
-			return nil, cleanup, errors.Wrap(err, "no relationships created")
+	for i := 1; i <= 12; i++ {
+		for _, tx := range txList {
+			month := strconv.FormatInt(int64(i), 10)
+			if i < 10 {
+				month = "0" + month
+			}
+			if result, err := session.Run(string(MustAsset("neo4j-create-tx.cyp")), map[string]interface{}{
+				"srcId":    tx.srcID,
+				"dstId":    tx.dstID,
+				"id":       tx.id + "-2020-" + month + "-01",
+				"amount":   tx.amount,
+				"issuedOn": time.Date(2020, time.Month(i), 1, 0, 0, 0, 0, time.UTC),
+				"comment":  tx.comment + " (2020-" + month + "-01)",
+			}); err != nil {
+				return nil, cleanup, errors.Wrap(err, "failed populating transactions")
+			} else if err := result.Err(); err != nil {
+				return nil, cleanup, errors.Wrap(err, "result error")
+			} else if summary, err := result.Summary(); err != nil {
+				return nil, cleanup, errors.Wrap(err, "result summary error")
+			} else if summary.Counters().NodesCreated() > 0 {
+				return nil, cleanup, errors.New("nodes should not have been created")
+			} else if summary.Counters().RelationshipsCreated() <= 0 {
+				return nil, cleanup, errors.New("no relationships created")
+			}
 		}
 	}
-
 	return driver, cleanup, err
 }
