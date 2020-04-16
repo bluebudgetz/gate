@@ -34,9 +34,9 @@ func GetAccount() http.HandlerFunc {
 		} else {
 			GetNode(w, r, getAccountQuery, map[string]interface{}{"id": req.ID}, func(rec neo4j.Record) (interface{}, error) {
 				if node, ok := rec.Get("account"); !ok {
-					return nil, errors.Wrap(err, "node not found in results")
+					return nil, errors.New("account not found in results")
 				} else if accNode, ok := node.(neo4j.Node); !ok {
-					return nil, errors.Wrap(err, "node mismatch")
+					return nil, errors.New("account node mismatch")
 				} else {
 					return GetAccountResponse{
 						Account: GetAccountData{

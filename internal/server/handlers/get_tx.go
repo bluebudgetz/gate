@@ -7,6 +7,8 @@ import (
 	"github.com/golangly/errors"
 	"github.com/golangly/webutil"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
+
+	"github.com/bluebudgetz/gate/internal/util"
 )
 
 type (
@@ -26,29 +28,29 @@ func GetTransaction() http.HandlerFunc {
 		} else {
 			GetNode(w, r, getTxQuery, map[string]interface{}{"id": req.ID}, func(rec neo4j.Record) (interface{}, error) {
 				if tx, ok := rec.Get("tx"); !ok {
-					return nil, errors.Wrap(err, "tx node not found in results")
-				} else if txNode, ok := tx.(neo4j.Node); !ok {
-					return nil, errors.Wrap(err, "tx node mismatch")
+					return nil, errors.New("tx node not found in results")
+				} else if txRel, ok := tx.(neo4j.Relationship); !ok {
+					return nil, errors.New("tx node mismatch")
 				} else if src, ok := rec.Get("src"); !ok {
-					return nil, errors.Wrap(err, "src node not found in results")
+					return nil, errors.New("src node not found in results")
 				} else if srcNode, ok := src.(neo4j.Node); !ok {
-					return nil, errors.Wrap(err, "src node mismatch")
+					return nil, errors.New("src node mismatch")
 				} else if dst, ok := rec.Get("dst"); !ok {
-					return nil, errors.Wrap(err, "dst node not found in results")
+					return nil, errors.New("dst node not found in results")
 				} else if dstNode, ok := dst.(neo4j.Node); !ok {
-					return nil, errors.Wrap(err, "dst node mismatch")
+					return nil, errors.New("dst node mismatch")
 				} else {
 					return GetTransactionResponse{
 						Tx: Transaction{
-							ID:              txNode.Props()["id"].(string),
-							CreatedOn:       txNode.Props()["createdOn"].(time.Time),
-							UpdatedOn:       txNode.Props()["updatedOn"].(*time.Time),
-							IssuedOn:        txNode.Props()["issuedOn"].(time.Time),
-							Origin:          txNode.Props()["origin"].(string),
+							ID:              txRel.Props()["id"].(string),
+							CreatedOn:       txRel.Props()["createdOn"].(time.Time),
+							UpdatedOn:       util.OptionalDateTime(txRel.Props()["updatedOn"]),
+							IssuedOn:        txRel.Props()["issuedOn"].(time.Time),
+							Origin:          txRel.Props()["origin"].(string),
 							SourceAccountID: srcNode.Props()["id"].(string),
 							TargetAccountID: dstNode.Props()["id"].(string),
-							Amount:          txNode.Props()["amount"].(float64),
-							Comment:         txNode.Props()["comment"].(string),
+							Amount:          txRel.Props()["amount"].(float64),
+							Comment:         txRel.Props()["comment"].(string),
 						},
 					}, nil
 				}
