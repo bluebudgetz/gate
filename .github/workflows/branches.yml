@@ -9,7 +9,7 @@ jobs:
     services:
       neo4j:
         image: docker.pkg.github.com/bluebudgetz/neo4j/neo4j:v0.0.1
-        ports: [7473:7473, 7687:7687]
+        ports: ["7473:7473", "7687:7687"]
     steps:
       - name: Clone
         uses: actions/checkout@v1
