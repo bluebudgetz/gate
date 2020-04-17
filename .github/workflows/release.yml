@@ -11,11 +11,11 @@ jobs:
         uses: actions/checkout@v1
       - name: Docker login
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: docker login docker.pkg.github.com -u arikkfir -p "${GITHUB_TOKEN}"
+          DOCKERHUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+        run: docker login --username arikkfir -p "${DOCKERHUB_ACCESS_TOKEN}"
       - name: Pull ref image
-        run: docker pull docker.pkg.github.com/${GITHUB_REPOSITORY}/neo4j:${GITHUB_SHA::7}
+        run: docker pull ${GITHUB_REPOSITORY}:${GITHUB_SHA::7}
       - name: Tag ref image as release image
-        run: docker tag docker.pkg.github.com/${GITHUB_REPOSITORY}/neo4j:${GITHUB_SHA::7} docker.pkg.github.com/${GITHUB_REPOSITORY}/neo4j:$(cut -d'/' -f3 <<<${GITHUB_REF})
+        run: docker tag ${GITHUB_REPOSITORY}:${GITHUB_SHA::7} ${GITHUB_REPOSITORY}:$(cut -d'/' -f3 <<<${GITHUB_REF})
       - name: Push Image
-        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/neo4j:$(cut -d'/' -f3 <<<${GITHUB_REF})
+        run: docker push ${GITHUB_REPOSITORY}:$(cut -d'/' -f3 <<<${GITHUB_REF})
