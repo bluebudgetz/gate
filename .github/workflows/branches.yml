@@ -28,7 +28,7 @@ jobs:
         run: go vet ./...
       - name: Formatting
         run: |
-          find . -name assets_gen.go -execdir mv '{}' '.{}' ';'
+          find . -name "*_gen.go" -exec rm -fv '{}' ';'
           test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
           git clean -fd && git checkout .
       - name: Docker login
