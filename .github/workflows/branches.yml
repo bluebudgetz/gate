@@ -31,6 +31,8 @@ jobs:
           find . -name "*_gen.go" -exec rm -fv '{}' ';'
           test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
           git clean -fd && git checkout .
+      - name: Sanity
+        run: find . -name "*_gen.go"
       - name: Docker login
         env:
           DOCKERHUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
