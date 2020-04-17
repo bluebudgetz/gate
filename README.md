@@ -2,17 +2,16 @@
 
 Bluebudgetz API gateway.
 
-### Tasks
+## Tasks
 
 - [ ] Implement authentication (JWT)
-- [ ] Integrate [Cloud Code](https://cloud.google.com/code/docs/intellij/quickstart-IDEA)
-- [ ] Gate should start even if MongoDB is down (just return 500 for requests)
+- [ ] Increase test coverage
 
 ## Contributing
 
-Please read the [Code of Conduct](.github/CODE_OF_CONDUCT.md) & [Contributing](.github/CONTRIBUTING.md) documents.
+First, please read the [contribution guide](.github/CONTRIBUTING.md).
 
-## Development environment
+#### Development environment
 
 If you're on macOS:
 
