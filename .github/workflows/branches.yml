@@ -17,6 +17,11 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: 1.13
+      - name: Set up Seabolt
+        run: |
+          wget https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.4/seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
+          dpkg -i seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
+          rm seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
       - name: Test
         run: go test ./...
       - name: Vet
