@@ -28,11 +28,11 @@ func NewConfig() (config.Config, error) {
 }
 
 type testTx struct {
-	srcID    string
-	dstID    string
-	id       string
-	amount   float64
-	comment  string
+	srcID   string
+	dstID   string
+	id      string
+	amount  float64
+	comment string
 }
 
 var txList = []testTx{
