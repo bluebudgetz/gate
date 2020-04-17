@@ -3,10 +3,9 @@
 //go:generate wire
 //+build !wireinject
 
-package main
+package app
 
 import (
-	"github.com/bluebudgetz/gate/internal/app"
 	"github.com/bluebudgetz/gate/internal/config"
 	"github.com/bluebudgetz/gate/internal/server"
 	"github.com/bluebudgetz/gate/internal/server/handlers"
@@ -15,7 +14,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitializeApp() (*app.App, func(), error) {
+func InitializeApp() (*App, func(), error) {
 	configConfig, err := config.NewConfig()
 	if err != nil {
 		return nil, nil, err
@@ -28,7 +27,7 @@ func InitializeApp() (*app.App, func(), error) {
 	routes := handlers.NewRoutes(driver)
 	mux := server.NewChiRouter(configConfig, registry, routes)
 	v := server.NewHTTPServers(configConfig, mux)
-	appApp, err := app.NewApp(configConfig, v)
+	appApp, err := NewApp(configConfig, v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

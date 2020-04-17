@@ -6,6 +6,8 @@ import (
 
 	"github.com/golangly/errors"
 	"github.com/golangly/log"
+
+	"github.com/bluebudgetz/gate/internal/app"
 )
 
 func main() {
@@ -23,7 +25,7 @@ func main() {
 	}()
 
 	// Create application
-	application, cleanup, err := InitializeApp()
+	application, cleanup, err := app.InitializeApp()
 	if err != nil {
 		handleError(err)
 	}

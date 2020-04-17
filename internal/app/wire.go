@@ -1,20 +1,19 @@
 //+build wireinject
 
-package main
+package app
 
 import (
 	"github.com/google/wire"
 
-	"github.com/bluebudgetz/gate/internal/app"
 	"github.com/bluebudgetz/gate/internal/config"
 	"github.com/bluebudgetz/gate/internal/server"
 	"github.com/bluebudgetz/gate/internal/server/handlers"
 	"github.com/bluebudgetz/gate/internal/services"
 )
 
-func InitializeApp() (*app.App, func(), error) {
+func InitializeApp() (*App, func(), error) {
 	wire.Build(
-		app.NewApp,
+		NewApp,
 		config.NewConfig,
 		services.NewNeo4jDriver,
 		handlers.NewRoutes,
@@ -22,5 +21,5 @@ func InitializeApp() (*app.App, func(), error) {
 		server.NewChiRouter,
 		server.NewHTTPServers,
 	)
-	return &app.App{}, nil, nil
+	return &App{}, nil, nil
 }
