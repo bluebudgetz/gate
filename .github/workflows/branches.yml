@@ -32,5 +32,5 @@ jobs:
         run: docker login docker.pkg.github.com -u arikkfir -p "${GITHUB_TOKEN}"
       - name: Build ref mage
         run: docker build --tag=docker.pkg.github.com/${GITHUB_REPOSITORY}/gate:${GITHUB_SHA::7} .
-      - name: Push ref image
-        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/gate:${GITHUB_SHA::7}
+#      - name: Push ref image
+#        run: docker push docker.pkg.github.com/${GITHUB_REPOSITORY}/gate:${GITHUB_SHA::7}
