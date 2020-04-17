@@ -1,6 +1,4 @@
-/bin/gate
-/bin/gatectl
-/bin/go_build_*
+/bin/*
 *.local.*
 *.local
 .DS_Store

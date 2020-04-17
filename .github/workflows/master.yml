@@ -1,0 +1,41 @@
+name: Build master
+on:
+  push:
+    branches: [master]
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v1
+      - name: Set up Go 1.13
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+      - name: Set up Seabolt
+        run: |
+          wget https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.4/seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
+          sudo dpkg -i seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
+          rm seabolt-1.7.4-Linux-ubuntu-$(lsb_release -rs).deb
+      - name: Test
+        run: go test ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Formatting
+        run: |
+          find . -name "*_gen.go" -exec rm -fv '{}' ';'
+          test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
+          git clean -fd && git checkout .
+      - name: Docker login
+        env:
+          DOCKERHUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+        run: docker login --username arikkfir -p "${DOCKERHUB_ACCESS_TOKEN}"
+      - name: Build ref image
+        run: docker build --file=build/Dockerfile --tag=${GITHUB_REPOSITORY}:${GITHUB_SHA::7} .
+      - name: Tag ref image as latest
+        run: docker tag ${GITHUB_REPOSITORY}:${GITHUB_SHA::7} ${GITHUB_REPOSITORY}:latest
+      - name: Push ref image
+        run: docker push ${GITHUB_REPOSITORY}:${GITHUB_SHA::7}
+      - name: Push latest image
+        run: docker push ${GITHUB_REPOSITORY}:latest
