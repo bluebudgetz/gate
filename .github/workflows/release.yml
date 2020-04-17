@@ -6,6 +6,10 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: bluebudgetz/neo4j:v0.0.1
+        ports: ["7473:7473", "7687:7687"]
     steps:
       - name: Clone
         uses: actions/checkout@v1
