@@ -1,4 +1,4 @@
-# gate [![GoDoc](https://godoc.org/github.com/bluebudgetz/gate?status.svg)](http://godoc.org/github.com/bluebudgetz/gate) [![Report card](https://goreportcard.com/badge/github.com/bluebudgetz/gate)](https://goreportcard.com/report/github.com/bluebudgetz/gate) [![Sourcegraph](https://sourcegraph.com/github.com/bluebudgetz/gate/-/badge.svg)](https://sourcegraph.com/github.com/bluebudgetz/gate?badge)
+# gate ![Build master](https://github.com/bluebudgetz/gate/workflows/Build%20master/badge.svg) [![GoDoc](https://godoc.org/github.com/bluebudgetz/gate?status.svg)](http://godoc.org/github.com/bluebudgetz/gate) [![Report card](https://goreportcard.com/badge/github.com/bluebudgetz/gate)](https://goreportcard.com/report/github.com/bluebudgetz/gate) [![Sourcegraph](https://sourcegraph.com/github.com/bluebudgetz/gate/-/badge.svg)](https://sourcegraph.com/github.com/bluebudgetz/gate?badge)
 
 Bluebudgetz API gateway.
 
