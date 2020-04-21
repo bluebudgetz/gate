@@ -11,11 +11,28 @@ Bluebudgetz API gateway.
 
 First, please read the [contribution guide](.github/CONTRIBUTING.md).
 
-#### Development environment
+### Development environment
 
-If you're on macOS:
+#### Linux
 
-* `brew install michael-simons/homebrew-seabolt/seabolt` (michael-simons/homebrew-seabolt)
+TBD.
+
+#### MacOS
+
+Do not use the `seabolt_static` tag (via `--tags seabolt_static`) as it seems not to work at the moment.
+
+Instead, simply install `michael-simons/homebrew-seabolt/seabolt` brew package, which will make `Seabolt` propertly available on your MacOS workstation. Then simply use a standard `go build ..` command, like so:
+ 
+```bash
+# Install Seabolt:
+$ brew install michael-simons/homebrew-seabolt/seabolt
+
+# Verify it works:
+$ BOLT_USER="" seabolt-cli run "UNWIND range(1, 23) AS n RETURN n"
+
+# Build and run:
+$ go build ...
+```
 
 ## License
 
