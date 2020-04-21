@@ -27,12 +27,12 @@ func InitializeApp() (*App, func(), error) {
 	routes := handlers.NewRoutes(driver)
 	mux := server.NewChiRouter(configConfig, registry, routes)
 	v := server.NewHTTPServers(configConfig, mux)
-	appApp, err := NewApp(configConfig, v)
+	app, err := NewApp(configConfig, v)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	return appApp, func() {
+	return app, func() {
 		cleanup()
 	}, nil
 }
