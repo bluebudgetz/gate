@@ -103,7 +103,7 @@ func delete_accountCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "delete_account.cyp", size: 45, mode: os.FileMode(420), modTime: time.Unix(1585334896, 0)}
+	info := bindataFileInfo{name: "delete_account.cyp", size: 45, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -123,7 +123,7 @@ func delete_txCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "delete_tx.cyp", size: 61, mode: os.FileMode(420), modTime: time.Unix(1585335716, 0)}
+	info := bindataFileInfo{name: "delete_tx.cyp", size: 61, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -143,7 +143,7 @@ func get_accountCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "get_account.cyp", size: 710, mode: os.FileMode(420), modTime: time.Unix(1585329126, 0)}
+	info := bindataFileInfo{name: "get_account.cyp", size: 710, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -163,7 +163,7 @@ func get_accounts_treeCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "get_accounts_tree.cyp", size: 709, mode: os.FileMode(420), modTime: time.Unix(1585945096, 0)}
+	info := bindataFileInfo{name: "get_accounts_tree.cyp", size: 709, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -183,7 +183,7 @@ func get_txCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "get_tx.cyp", size: 75, mode: os.FileMode(420), modTime: time.Unix(1585944920, 0)}
+	info := bindataFileInfo{name: "get_tx.cyp", size: 75, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -203,7 +203,7 @@ func get_tx_listCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "get_tx_list.cyp", size: 121, mode: os.FileMode(420), modTime: time.Unix(1585083333, 0)}
+	info := bindataFileInfo{name: "get_tx_list.cyp", size: 121, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -223,7 +223,7 @@ func patch_accountCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "patch_account.cyp", size: 399, mode: os.FileMode(420), modTime: time.Unix(1586289152, 0)}
+	info := bindataFileInfo{name: "patch_account.cyp", size: 399, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -243,7 +243,7 @@ func patch_txCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "patch_tx.cyp", size: 264, mode: os.FileMode(420), modTime: time.Unix(1586288176, 0)}
+	info := bindataFileInfo{name: "patch_tx.cyp", size: 264, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -263,7 +263,7 @@ func post_accountCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "post_account.cyp", size: 317, mode: os.FileMode(420), modTime: time.Unix(1586290830, 0)}
+	info := bindataFileInfo{name: "post_account.cyp", size: 317, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -283,7 +283,7 @@ func post_txCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "post_tx.cyp", size: 328, mode: os.FileMode(420), modTime: time.Unix(1586291732, 0)}
+	info := bindataFileInfo{name: "post_tx.cyp", size: 328, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -303,7 +303,7 @@ func put_accountCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "put_account.cyp", size: 411, mode: os.FileMode(420), modTime: time.Unix(1586293399, 0)}
+	info := bindataFileInfo{name: "put_account.cyp", size: 411, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -323,7 +323,7 @@ func put_txCyp() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "put_tx.cyp", size: 177, mode: os.FileMode(420), modTime: time.Unix(1586293488, 0)}
+	info := bindataFileInfo{name: "put_tx.cyp", size: 177, mode: os.FileMode(420), modTime: time.Unix(1587165408, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
