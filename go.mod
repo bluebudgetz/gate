@@ -17,6 +17,7 @@ require (
 	github.com/onsi/ginkgo v1.10.3 // indirect
 	github.com/onsi/gomega v1.7.1 // indirect
 	github.com/prometheus/client_golang v1.2.1
+	github.com/stretchr/testify v1.4.0
 	gopkg.in/go-playground/validator.v9 v9.30.0
 )
 
