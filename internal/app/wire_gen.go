@@ -36,3 +36,26 @@ func InitializeApp() (*App, func(), error) {
 		cleanup()
 	}, nil
 }
+
+func InitializeTestApp() (*App, func(), error) {
+	configConfig, err := config.NewTestConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	registry := server.NewPrometheusRegistry()
+	driver, cleanup, err := services.NewTestNeo4jDriver()
+	if err != nil {
+		return nil, nil, err
+	}
+	routes := handlers.NewRoutes(driver)
+	mux := server.NewChiRouter(configConfig, registry, routes)
+	v := server.NewHTTPServers(configConfig, mux)
+	app, err := NewApp(configConfig, v)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	return app, func() {
+		cleanup()
+	}, nil
+}

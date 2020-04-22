@@ -1,4 +1,4 @@
-package test
+package services
 
 import (
 	"strconv"
@@ -6,26 +6,10 @@ import (
 
 	"github.com/golangly/errors"
 	"github.com/golangly/log"
-	"github.com/jessevdk/go-flags"
 	"github.com/neo4j/neo4j-go-driver/neo4j"
-
-	"github.com/bluebudgetz/gate/internal/config"
-	"github.com/bluebudgetz/gate/internal/services"
 )
 
-//go:generate go-bindata -o ./assets_gen.go -ignore ".*\\.go" -pkg test ./...
-
-func NewConfig() (config.Config, error) {
-	cfg := config.Config{}
-	parser := flags.NewParser(&cfg, flags.HelpFlag|flags.PrintErrors|flags.PassDoubleDash)
-	parser.NamespaceDelimiter = "-"
-	parser.LongDescription = "Bluebudgetz API gateway. This is the API micro-service centralizing Bluebudgetz APIs."
-	if _, err := parser.ParseArgs([]string{}); err != nil {
-		return config.Config{}, err
-	}
-	cfg.HTTP.DisableAccessLog = true
-	return cfg, nil
-}
+//go:generate go-bindata -o ./assets_gen.go -ignore ".*\\.go" -pkg services ./...
 
 type testTx struct {
 	srcID   string
@@ -87,13 +71,13 @@ var txList = []testTx{
 	},
 }
 
-func NewNeo4jDriver() (neo4j.Driver, func(), error) {
-	driver, cleanup, err := services.NewNeo4jDriver()
+func NewTestNeo4jDriver() (neo4j.Driver, func(), error) {
+	driver, cleanup, err := NewNeo4jDriver()
 	if err != nil {
 		return nil, cleanup, err
 	}
 
-	session, err := services.CreateNeo4jSession(driver, neo4j.AccessModeWrite)
+	session, err := CreateNeo4jSession(driver, neo4j.AccessModeWrite)
 	if err != nil {
 		return nil, cleanup, err
 	}

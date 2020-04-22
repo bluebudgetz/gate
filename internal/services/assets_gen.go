@@ -1,9 +1,9 @@
-// Code generated for package test by go-bindata DO NOT EDIT. (@generated)
+// Code generated for package services by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // neo4j-cleanup.cyp
 // neo4j-create-nodes.cyp
 // neo4j-create-tx.cyp
-package test
+package services
 
 import (
 	"bytes"

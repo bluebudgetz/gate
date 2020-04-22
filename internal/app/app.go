@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -65,6 +66,10 @@ func (app *App) Run(quitChan chan error) error {
 // Returns the application configuration.
 func (app *App) GetConfig() config.Config {
 	return app.cfg
+}
+
+func (app *App) BuildURL(host string, path string, pathArgs ...interface{}) string {
+	return fmt.Sprintf("http://%s:%d%s", host, app.GetConfig().HTTP.Port, fmt.Sprintf(path, pathArgs...))
 }
 
 func NewApp(cfg config.Config, servers []*http.Server) (*App, error) {

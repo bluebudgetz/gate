@@ -60,3 +60,15 @@ func NewConfig() (Config, error) {
 	}
 	return cfg, nil
 }
+
+func NewTestConfig() (Config, error) {
+	cfg := Config{}
+	parser := flags.NewParser(&cfg, flags.HelpFlag|flags.PrintErrors|flags.PassDoubleDash)
+	parser.NamespaceDelimiter = "-"
+	parser.LongDescription = "Bluebudgetz API gateway. This is the API micro-service centralizing Bluebudgetz APIs."
+	if _, err := parser.ParseArgs([]string{}); err != nil {
+		return Config{}, err
+	}
+	cfg.HTTP.DisableAccessLog = true
+	return cfg, nil
+}

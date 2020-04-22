@@ -23,3 +23,16 @@ func InitializeApp() (*App, func(), error) {
 	)
 	return &App{}, nil, nil
 }
+
+func InitializeTestApp() (*App, func(), error) {
+	wire.Build(
+		NewApp,
+		config.NewTestConfig,
+		services.NewTestNeo4jDriver,
+		handlers.NewRoutes,
+		server.NewPrometheusRegistry,
+		server.NewChiRouter,
+		server.NewHTTPServers,
+	)
+	return &App{}, nil, nil
+}
