@@ -16,14 +16,9 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 
 	"github.com/bluebudgetz/gate/internal/config"
-	"github.com/bluebudgetz/gate/internal/server/handlers"
 )
 
-func NewPrometheusRegistry() *prometheus.Registry {
-	return prometheus.NewRegistry()
-}
-
-func NewChiRouter(cfg config.Config, metricsRegistry *prometheus.Registry, routes handlers.Routes) *chi.Mux {
+func NewChiRouter(cfg config.Config, metricsRegistry *prometheus.Registry, routes func(chi.Router)) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(
 		middleware.SetHeader("Server", "bluebudgetz/gate"),

@@ -56,7 +56,7 @@ func init() {
 	putTxQuery = string(MustAsset("put_tx.cyp"))
 }
 
-func NewRoutes(neo4jDriver neo4j.Driver) Routes {
+func NewRoutes(neo4jDriver neo4j.Driver) func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/routes", routesDoc(r))
 		r.Route("/accounts", func(r chi.Router) {

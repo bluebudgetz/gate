@@ -10,7 +10,6 @@ require (
 	github.com/golangly/errors v0.2.2
 	github.com/golangly/log v0.2.0
 	github.com/golangly/webutil v0.3.0
-	github.com/google/wire v0.4.0
 	github.com/jessevdk/go-flags v1.4.1-0.20181221193153-c0795c8afcf4
 	github.com/neo4j-drivers/gobolt v1.7.4 // indirect
 	github.com/neo4j/neo4j-go-driver v1.7.4

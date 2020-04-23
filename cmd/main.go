@@ -4,10 +4,15 @@ import (
 	glog "log"
 	"os"
 
+	"github.com/go-chi/chi"
 	"github.com/golangly/errors"
 	"github.com/golangly/log"
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 
-	"github.com/bluebudgetz/gate/internal/app"
+	"github.com/bluebudgetz/gate/internal/boot"
+	"github.com/bluebudgetz/gate/internal/config"
+	"github.com/bluebudgetz/gate/internal/server/handlers"
+	"github.com/bluebudgetz/gate/internal/services"
 )
 
 func main() {
@@ -25,7 +30,11 @@ func main() {
 	}()
 
 	// Create application
-	application, cleanup, err := app.InitializeApp()
+	application, cleanup, err := boot.InitializeApp(
+		config.NewConfig,
+		func(neo4jDriver neo4j.Driver) func(chi.Router) { return handlers.NewRoutes(neo4jDriver) },
+		services.NewNeo4jDriver,
+	)
 	if err != nil {
 		handleError(err)
 	}
