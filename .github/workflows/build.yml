@@ -8,30 +8,22 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     name: Build
     runs-on: ubuntu-latest
-
-    # Declare services for testing
     services:
       neo4j:
         image: bluebudgetz/neo4j:v0.0.1
         ports: ["7473:7473", "7687:7687"]
-
-    # Steps
     steps:
 
-      # Clone source code
+      # Setup
       - uses: actions/checkout@v2
-
-      # Setup Seabolt (required for connecting to Neo4j from Go programs)
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.13
       - run: |
           VERSION="$(lsb_release -rs)"
           wget "https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.4/seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
           sudo dpkg -i "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
           rm "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
-
-      # Setup Go
-      - uses: actions/setup-go@v2
-        with:
-          go-version: 1.13
       - run: go mod download
 
       # Verify
