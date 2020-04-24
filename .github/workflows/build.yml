@@ -24,7 +24,7 @@ jobs:
       - run: |
           VERSION="$(lsb_release -rs)"
           wget "https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.4/seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
-          dpkg -i "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
+          sudo dpkg -i "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
           rm "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
 
       # Setup Go
