@@ -1,0 +1,49 @@
+name: Build
+on:
+  push:
+  pull_request:
+    types: [opened, reopened, synchronize]
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    name: Build
+    runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: bluebudgetz/neo4j:v0.0.1
+        ports: ["7473:7473", "7687:7687"]
+    steps:
+
+      # Setup
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.13
+      - run: |
+          VERSION="$(lsb_release -rs)"
+          wget "https://github.com/neo4j-drivers/seabolt/releases/download/v1.7.4/seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
+          sudo dpkg -i "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
+          rm "seabolt-1.7.4-Linux-ubuntu-${VERSION}.deb"
+      - run: go mod download
+
+      # Verify
+      - run: go get -u github.com/ory/go-acc && go-acc ./...
+      - uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: coverage.txt
+      - run: go vet ./...
+      - run: |
+          find . -name "*_gen.go" -exec rm -fv '{}' ';'
+          test -z "$(gofmt -s -l -d -e . | tee /dev/stderr)"
+          git clean -fd && git checkout .
+
+      # Build, tag & publish Docker image
+      - uses: docker/build-push-action@v1
+        with:
+          username: arikkfir
+          password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+          repository: ${{ github.repository }}
+          dockerfile: build/Dockerfile
+          tag_with_ref: true
+          tag_with_sha: true
+          add_git_labels: true
