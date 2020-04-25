@@ -38,20 +38,6 @@ jobs:
       - uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.txt
-      - run: curl -sSL "https://coveralls.io/builds/${{ github.sha }}.json" > coverage.js
-        if: github.event_name == 'pull_request'
-      - uses: actions/github-script@0.9.0
-        if: github.event_name == 'pull_request'
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const coverage = require('coverage')
-            github.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: 'Coverage is now ' + coverage.coverage_change + '%'
-            })
 
       # Build, tag & publish Docker image
       - uses: docker/build-push-action@v1
