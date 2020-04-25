@@ -38,14 +38,14 @@ jobs:
       - uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.txt
-      - run: curl -sSL "https://coveralls.io/builds/${{ github.sha }}.json" > coverage.json
+      - run: curl -sSL "https://coveralls.io/builds/${{ github.sha }}.json" > coverage.js
         if: github.event_name == 'pull_request'
       - uses: actions/github-script@0.9.0
         if: github.event_name == 'pull_request'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const coverage = require('coverage.json')
+            const coverage = require('coverage')
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
