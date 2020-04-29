@@ -35,10 +35,10 @@ jobs:
 
       # Tests
       - run: go get -u github.com/ory/go-acc && go-acc ./...
-      - uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: coverage.txt
-      - run: cat ./coverage.txt | tail +2 > coverage.lcov
+#      - uses: shogo82148/actions-goveralls@v1
+#        with:
+#          path-to-profile: coverage.txt
+      - run: go get -u github.com/jandelgado/gcov2lcov && gcov2lcov -inputfile=coverage.txt -outfile=coverage.lcov
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
