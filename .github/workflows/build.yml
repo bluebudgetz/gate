@@ -38,6 +38,10 @@ jobs:
       - uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.txt
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # Build, tag & publish Docker image
       - uses: docker/build-push-action@v1
