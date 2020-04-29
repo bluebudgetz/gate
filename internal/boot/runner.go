@@ -32,7 +32,7 @@ func InitializeApp(
 
 	servers := server.NewHTTPServers(configConfig, router)
 
-	application, err := app.NewApp(configConfig, servers)
+	application, err := app.NewApp(configConfig, neo4jDriver, servers)
 	if err != nil {
 		cleanup()
 		return nil, nil, err

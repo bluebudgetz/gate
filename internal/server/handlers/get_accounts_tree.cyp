@@ -11,6 +11,6 @@ OPTIONAL MATCH p = (a)<-[:childOf*0..]-(:Account)<-[r:Paid]-(:Account)
 WITH a, children, sum(r.amount) AS incoming, outgoing
 
 // Pull everything together
-RETURN a as account, children, incoming, outgoing, incoming - outgoing AS balance
+RETURN a as account, children, toFloat(incoming) AS incoming, toFloat(outgoing) AS outgoing, toFloat(incoming - outgoing) AS balance
   ORDER BY a.name
 // TODO: support skip/limit

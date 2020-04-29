@@ -42,8 +42,8 @@ github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golangly/errors v0.2.1 h1:rhcrTuW4AuDjcmKtunvLYn+jD71kjWR5WcAnDLQ3y0k=
 github.com/golangly/errors v0.2.1/go.mod h1:rbufAFQnpOY57i0aszPo5PtBu9L1O9AtPRDQSyyFa90=
-github.com/golangly/errors v0.2.2 h1:4DAzBB3giqYJo4BK4VV4cwJOTZwRtOXuWfBiMrMDlhk=
-github.com/golangly/errors v0.2.2/go.mod h1:rbufAFQnpOY57i0aszPo5PtBu9L1O9AtPRDQSyyFa90=
+github.com/golangly/errors v0.3.0 h1:tlyR3MWzRL8kgrnUkSaHu9teWSVFN1x9PPurb3i2l6Y=
+github.com/golangly/errors v0.3.0/go.mod h1:IVzYWQK8Yk7rijlTz690H5kRUFt0CrLLY1fcG9ReWfM=
 github.com/golangly/log v0.2.0 h1:JoIFZ4B9pMHoWFEJBgBv24wPmdGC7cmfbnsmIG0fzao=
 github.com/golangly/log v0.2.0/go.mod h1:q7W/vexSQLVaVIo4lSTg40jESuaTiQiIKJ8YIkd5HI0=
 github.com/golangly/webutil v0.3.0 h1:NRBYfR35drFhAG3n+iLNythf5ipayV2tlD5DfIi/Am0=

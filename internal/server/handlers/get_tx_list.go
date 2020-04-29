@@ -34,7 +34,7 @@ type (
 
 func GetTransactionList() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		req := GetTransactionListRequest{}
+		req := GetTransactionListRequest{Paging: util.Paging{Page: 0, PageSize: 10}}
 		if err := webutil.Bind(r, &req); err != nil {
 			webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, err)
 			return
@@ -42,7 +42,7 @@ func GetTransactionList() http.HandlerFunc {
 
 		// Query
 		result, err := services.GetNeo4jSession(r.Context()).Run(getTxListQuery, map[string]interface{}{
-			"skip":  (req.Paging.Page - 1) * req.Paging.PageSize,
+			"skip":  req.Paging.Page * req.Paging.PageSize,
 			"limit": req.Paging.PageSize,
 		})
 		if err != nil {
@@ -60,23 +60,23 @@ func GetTransactionList() http.HandlerFunc {
 			} else if src, ok := rec.Get("src"); !ok {
 				webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, errors.New("failed getting src node"))
 				return
-			} else if dst, ok := rec.Get("src"); !ok {
+			} else if dst, ok := rec.Get("dst"); !ok {
 				webutil.RenderWithStatusCode(w, r, http.StatusInternalServerError, errors.New("failed getting dst node"))
 				return
 			} else {
-				txNode := tx.(neo4j.Node).Props()
+				txRel := tx.(neo4j.Relationship).Props()
 				srcNode := src.(neo4j.Node).Props()
 				dstNode := dst.(neo4j.Node).Props()
 				transactions = append(transactions, GetTransactionListItemData{
-					ID:              txNode["id"].(string),
-					CreatedOn:       txNode["createdOn"].(time.Time),
-					UpdatedOn:       txNode["updatedOn"].(*time.Time),
-					IssuedOn:        txNode["issuedOn"].(time.Time),
-					Origin:          txNode["origin"].(string),
+					ID:              txRel["id"].(string),
+					CreatedOn:       txRel["createdOn"].(time.Time),
+					UpdatedOn:       util.OptionalDateTime(txRel["updatedOn"]),
+					IssuedOn:        txRel["issuedOn"].(time.Time),
+					Origin:          txRel["origin"].(string),
 					SourceAccountID: srcNode["id"].(string),
 					TargetAccountID: dstNode["id"].(string),
-					Amount:          txNode["amount"].(float64),
-					Comment:         txNode["comment"].(string),
+					Amount:          txRel["amount"].(float64),
+					Comment:         txRel["comment"].(string),
 				})
 			}
 		}

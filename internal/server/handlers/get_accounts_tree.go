@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/golangly/errors"
@@ -43,6 +44,18 @@ func buildTransactionTree(result neo4j.Result) ([]*GetAccountTreeData, error) {
 		}
 
 		// Create account object, and register it in in id->account map
+		incoming, ok := rec.Get("incoming")
+		if !ok {
+			return nil, errors.New("incoming mismatch")
+		}
+		outgoing, ok := rec.Get("outgoing")
+		if !ok {
+			return nil, errors.New("outgoing mismatch")
+		}
+		balance, ok := rec.Get("balance")
+		if !ok {
+			return nil, errors.New("balance mismatch")
+		}
 		account := GetAccountTreeData{
 			GetAccountData: GetAccountData{
 				ID:        node.Props()["id"].(string),
@@ -50,9 +63,9 @@ func buildTransactionTree(result neo4j.Result) ([]*GetAccountTreeData, error) {
 				UpdatedOn: util.OptionalDateTime(node.Props()["updatedOn"]),
 				Name:      node.Props()["name"].(string),
 			},
-			IncomingTx: node.Props()["incoming"].(float64),
-			OutgoingTx: node.Props()["outgoing"].(float64),
-			Balance:    node.Props()["balance"].(float64),
+			IncomingTx: incoming.(float64),
+			OutgoingTx: outgoing.(float64),
+			Balance:    balance.(float64),
 		}
 		nodes[account.ID] = &account
 
@@ -86,12 +99,23 @@ func buildTransactionTree(result neo4j.Result) ([]*GetAccountTreeData, error) {
 		}
 		nodes[accountID].Children = children
 	}
+	for _, account := range nodes {
+		sort.Slice(account.Children, func(i, j int) bool {
+			return sort.StringsAreSorted([]string{account.Children[i].Name, account.Children[j].Name})
+		})
+	}
 
 	// Map root accounts map to a list of root accounts
 	var accounts = make([]*GetAccountTreeData, 0)
 	for _, account := range roots {
 		accounts = append(accounts, account)
 	}
+	sort.Slice(accounts, func(i, j int) bool {
+		si := accounts[i].Name
+		sj := accounts[j].Name
+		sorted := sort.StringsAreSorted([]string{si, sj})
+		return sorted
+	})
 	return accounts, nil
 }
 

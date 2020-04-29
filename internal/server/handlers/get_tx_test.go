@@ -12,7 +12,7 @@ import (
 	"github.com/bluebudgetz/gate/internal/util/testfw"
 )
 
-func TestDeleteTx(t *testing.T) {
+func TestGetTx(t *testing.T) {
 	app, cleanup := testfw.Run(t, func(neo4jDriver neo4j.Driver) func(chi.Router) { return NewRoutes(neo4jDriver) })
 	defer cleanup()
 
@@ -22,11 +22,14 @@ func TestDeleteTx(t *testing.T) {
 
 	firstGetResp := testfw.Request(t, app.BuildURL("localhost", "/transactions/%s", t1.ID), "GET", nil, func(*http.Request) {})
 	assert.Equal(t, http.StatusOK, firstGetResp.StatusCode)
-
-	deleteResp := testfw.Request(t, app.BuildURL("localhost", "/transactions/%s", t1.ID), "DELETE", nil, func(*http.Request) {})
-	assert.Equal(t, http.StatusNoContent, deleteResp.StatusCode)
-
-	secondGetResp := testfw.Request(t, app.BuildURL("localhost", "/transactions/%s", t1.ID), "GET", nil, func(*http.Request) {})
-	assert.Equal(t, http.StatusNotFound, secondGetResp.StatusCode)
-	assert.Equal(t, int64(0), secondGetResp.ContentLength)
+	data := testfw.ReadResponseBody(t, firstGetResp, &GetTransactionResponse{}).(*GetTransactionResponse)
+	assert.Equal(t, t1.ID, data.Tx.ID)
+	assert.Equal(t, t1.CreatedOn, data.Tx.CreatedOn)
+	assert.Equal(t, t1.Comment, data.Tx.Comment)
+	assert.Equal(t, t1.Amount, data.Tx.Amount)
+	assert.Equal(t, t1.Origin, data.Tx.Origin)
+	assert.Equal(t, t1.IssuedOn, data.Tx.IssuedOn)
+	assert.Nil(t, data.Tx.UpdatedOn)
+	assert.Equal(t, a1.ID, data.Tx.SourceAccountID)
+	assert.Equal(t, a2.ID, data.Tx.TargetAccountID)
 }
