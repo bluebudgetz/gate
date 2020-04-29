@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/golangly/log"
+	"github.com/neo4j/neo4j-go-driver/neo4j"
 
 	"github.com/bluebudgetz/gate/internal/config"
 )
@@ -21,8 +22,13 @@ var signals = []os.Signal{
 }
 
 type App struct {
-	cfg     config.Config
-	servers []*http.Server
+	cfg         config.Config
+	neo4jDriver neo4j.Driver
+	servers     []*http.Server
+}
+
+func (app *App) Neo4jDriver() neo4j.Driver {
+	return app.neo4jDriver
 }
 
 // Run the application, until an error (or nil) is pushed to the given quit channel.
@@ -72,6 +78,6 @@ func (app *App) BuildURL(host string, path string, pathArgs ...interface{}) stri
 	return fmt.Sprintf("http://%s:%d%s", host, app.GetConfig().HTTP.Port, fmt.Sprintf(path, pathArgs...))
 }
 
-func NewApp(cfg config.Config, servers []*http.Server) (*App, error) {
-	return &App{cfg, servers}, nil
+func NewApp(cfg config.Config, neo4jDriver neo4j.Driver, servers []*http.Server) (*App, error) {
+	return &App{cfg, neo4jDriver, servers}, nil
 }

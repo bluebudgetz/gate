@@ -1,4 +1,4 @@
-package util
+package testfw
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ func Request(t *testing.T, url string, method string, body io.Reader, initialize
 	}
 }
 
-func ResponseBodyObject(t *testing.T, resp *http.Response, target interface{}) interface{} {
+func ReadResponseBody(t *testing.T, resp *http.Response, target interface{}) interface{} {
 	if bodyBytes, err := ioutil.ReadAll(resp.Body); err != nil {
 		t.Fatalf("failed reading response body: %+v", err)
 		return nil
